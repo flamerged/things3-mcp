@@ -351,3 +351,134 @@ export function deleteTodos(ids: string[]): string {
   
   return script;
 }
+
+/**
+ * Generate AppleScript to list projects
+ */
+export function listProjects(areaId?: string, includeCompleted?: boolean): string {
+  let script = 'tell application "Things3"\n';
+  
+  // Determine which projects to list
+  let projectList = 'projects';
+  if (areaId) {
+    const escapedAreaId = bridge.escapeString(areaId);
+    projectList = `projects of area id "${escapedAreaId}"`;
+  }
+  
+  script += `  set projectList to ${projectList}\n`;
+  script += '  set results to {}\n';
+  script += '  repeat with p in projectList\n';
+  
+  // Filter by completion status if specified
+  if (includeCompleted === false) {
+    script += '    if status of p is open then\n';
+  }
+  
+  // Build result record
+  script += '      set projectRecord to "{"';
+  script += ' & "\\"id\\":\\"" & (id of p) & "\\","';
+  script += ' & "\\"name\\":\\"" & (name of p) & "\\","';
+  script += ' & "\\"completed\\":" & (status of p is completed)';
+  
+  // Add area if present
+  script += ' & ","';
+  script += ' & "\\"areaId\\":" & (if area of p is missing value then "null" else "\\"" & (id of area of p) & "\\"")';
+  
+  script += ' & "}"\n';
+  script += '      set end of results to projectRecord\n';
+  
+  if (includeCompleted === false) {
+    script += '    end if\n';
+  }
+  
+  script += '  end repeat\n';
+  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
+  script += 'end tell\n\n';
+  
+  // Add helper function for joining lists
+  script += 'on joinList(lst, delim)\n';
+  script += '  set AppleScript\'s text item delimiters to delim\n';
+  script += '  set txt to lst as text\n';
+  script += '  set AppleScript\'s text item delimiters to ""\n';
+  script += '  return txt\n';
+  script += 'end joinList';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to list areas
+ */
+export function listAreas(includeHidden?: boolean): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set areaList to areas\n';
+  script += '  set results to {}\n';
+  script += '  repeat with a in areaList\n';
+  
+  // Filter by visibility if specified
+  if (includeHidden === false) {
+    script += '    if visible of a is true then\n';
+  }
+  
+  // Build result record
+  script += '      set areaRecord to "{"';
+  script += ' & "\\"id\\":\\"" & (id of a) & "\\","';
+  script += ' & "\\"name\\":\\"" & (name of a) & "\\","';
+  script += ' & "\\"visible\\":" & (visible of a)';
+  script += ' & "}"\n';
+  script += '      set end of results to areaRecord\n';
+  
+  if (includeHidden === false) {
+    script += '    end if\n';
+  }
+  
+  script += '  end repeat\n';
+  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
+  script += 'end tell\n\n';
+  
+  // Add helper function for joining lists
+  script += 'on joinList(lst, delim)\n';
+  script += '  set AppleScript\'s text item delimiters to delim\n';
+  script += '  set txt to lst as text\n';
+  script += '  set AppleScript\'s text item delimiters to ""\n';
+  script += '  return txt\n';
+  script += 'end joinList';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to list tags
+ */
+export function listTags(): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set tagList to tags\n';
+  script += '  set results to {}\n';
+  script += '  repeat with t in tagList\n';
+  
+  // Build result record
+  script += '    set tagRecord to "{"';
+  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
+  script += ' & "\\"name\\":\\"" & (name of t) & "\\""';
+  
+  // Add parent tag if present
+  script += ' & ","';
+  script += ' & "\\"parentTagId\\":" & (if parent tag of t is missing value then "null" else "\\"" & (id of parent tag of t) & "\\"")';
+  
+  script += ' & "}"\n';
+  script += '    set end of results to tagRecord\n';
+  
+  script += '  end repeat\n';
+  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
+  script += 'end tell\n\n';
+  
+  // Add helper function for joining lists
+  script += 'on joinList(lst, delim)\n';
+  script += '  set AppleScript\'s text item delimiters to delim\n';
+  script += '  set txt to lst as text\n';
+  script += '  set AppleScript\'s text item delimiters to ""\n';
+  script += '  return txt\n';
+  script += 'end joinList';
+  
+  return script;
+}
