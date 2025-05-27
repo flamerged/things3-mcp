@@ -1,5 +1,5 @@
 // ABOUTME: Type definitions for all Things3 MCP tool parameters and return types
-// ABOUTME: Includes parameter interfaces and return types for all 27 tools
+// ABOUTME: Includes parameter interfaces and return types for all tools
 
 /**
  * Common filter options for listing TODOs
@@ -19,7 +19,7 @@ export interface OperationResult {
   error?: string;
 }
 
-// ========== TODO Management Tools (1-7) ==========
+// ========== TODO Management Tools ==========
 
 /**
  * Parameters for todos.list tool
@@ -142,60 +142,7 @@ export interface TodosDeleteResult extends OperationResult {
   deletedCount: number;
 }
 
-// ========== Checklist Management Tools (8-11) ==========
-
-/**
- * Parameters for checklist.add tool
- */
-export interface ChecklistAddParams {
-  todoId: string;
-  items: Array<{
-    title: string;
-    completed?: boolean;
-  }>;
-}
-
-/**
- * Return type for checklist.add tool
- */
-export interface ChecklistAddResult extends OperationResult {
-  addedCount: number;
-}
-
-/**
- * Parameters for checklist.update tool
- */
-export interface ChecklistUpdateParams {
-  todoId: string;
-  itemIndex: number;
-  title?: string;
-  completed?: boolean;
-}
-
-/**
- * Parameters for checklist.reorder tool
- */
-export interface ChecklistReorderParams {
-  todoId: string;
-  newOrder: number[];
-}
-
-/**
- * Parameters for checklist.delete tool
- */
-export interface ChecklistDeleteParams {
-  todoId: string;
-  itemIndices: number[];
-}
-
-/**
- * Return type for checklist.delete tool
- */
-export interface ChecklistDeleteResult extends OperationResult {
-  deletedCount: number;
-}
-
-// ========== Project Management Tools (12-16) ==========
+// ========== Project Management Tools ==========
 
 /**
  * Parameters for projects.list tool
@@ -256,7 +203,7 @@ export interface ProjectsCompleteParams {
   id: string;
 }
 
-// ========== Area Management Tools (17-18) ==========
+// ========== Area Management Tools ==========
 
 /**
  * Parameters for areas.list tool
@@ -288,7 +235,7 @@ export interface AreasCreateResult extends OperationResult {
   id?: string;
 }
 
-// ========== Tag Management Tools (19-22) ==========
+// ========== Tag Management Tools ==========
 
 /**
  * Return type for tags.list tool
@@ -344,7 +291,7 @@ export interface TagsRemoveResult extends OperationResult {
   updatedCount: number;
 }
 
-// ========== Bulk Operation Tools (23-24) ==========
+// ========== Bulk Operation Tools ==========
 
 /**
  * Parameters for bulk.move tool
@@ -378,7 +325,7 @@ export interface BulkUpdateDatesResult extends OperationResult {
   updatedCount: number;
 }
 
-// ========== Logbook Tools (25) ==========
+// ========== Logbook Tools ==========
 
 /**
  * Parameters for logbook.search tool
@@ -400,7 +347,7 @@ export interface LogbookSearchResult {
   projectName?: string;
 }
 
-// ========== System Tools (26-27) ==========
+// ========== System Tools ==========
 
 /**
  * Return type for system.refresh tool

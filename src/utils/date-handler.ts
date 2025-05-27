@@ -13,22 +13,12 @@ export function isoToAppleScriptDate(isoDate: string): string {
     throw new Error(`Invalid ISO date: ${isoDate}`);
   }
   
-  // AppleScript expects format like "January 1, 2024 at 12:00:00 PM"
-  const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Use system timezone
-  };
+  // AppleScript expects numeric format like "5/29/2025"
+  const month = date.getMonth() + 1; // getMonth() is 0-based
+  const day = date.getDate();
+  const year = date.getFullYear();
   
-  const formatted = date.toLocaleString('en-US', options);
-  
-  // Transform "January 1, 2024, 12:00:00 PM" to "January 1, 2024 at 12:00:00 PM"
-  return formatted.replace(', ', ' at ');
+  return `${month}/${day}/${year}`;
 }
 
 /**

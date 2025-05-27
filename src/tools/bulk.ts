@@ -28,7 +28,6 @@ export class BulkTools {
 
     const script = templates.bulkMoveTodos(todoIds, params.projectId ?? undefined, params.areaId ?? undefined);
     const result = await this.bridge.execute(script);
-
     return {
       moved: parseInt(result, 10) || 0
     };
@@ -55,7 +54,6 @@ export class BulkTools {
 
     const script = templates.bulkUpdateDates(todoIds, whenDateScript, deadlineScript);
     const result = await this.bridge.execute(script);
-
     return {
       updated: parseInt(result, 10) || 0
     };

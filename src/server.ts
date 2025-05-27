@@ -8,7 +8,6 @@ import { TodosTools } from './tools/todos.js';
 import { ProjectTools } from './tools/projects.js';
 import { AreaTools } from './tools/areas.js';
 import { TagTools } from './tools/tags.js';
-import { ChecklistTools } from './tools/checklist.js';
 import { BulkTools } from './tools/bulk.js';
 import { LogbookTools } from './tools/logbook.js';
 import { SystemTools } from './tools/system.js';
@@ -20,7 +19,6 @@ export class Things3Server {
   public projectTools: ProjectTools;
   public areaTools: AreaTools;
   public tagTools: TagTools;
-  public checklistTools: ChecklistTools;
   public bulkTools: BulkTools;
   public logbookTools: LogbookTools;
   public systemTools: SystemTools;
@@ -43,7 +41,6 @@ export class Things3Server {
     this.projectTools = new ProjectTools();
     this.areaTools = new AreaTools();
     this.tagTools = new TagTools();
-    this.checklistTools = new ChecklistTools();
     this.bulkTools = new BulkTools();
     this.logbookTools = new LogbookTools();
     this.systemTools = new SystemTools();
@@ -58,13 +55,12 @@ export class Things3Server {
     const projectTools = ProjectTools.getTools(this.projectTools);
     const areaTools = AreaTools.getTools(this.areaTools);
     const tagTools = TagTools.getTools(this.tagTools);
-    const checklistTools = this.checklistTools.getTools();
     const bulkTools = this.bulkTools.getTools();
     const logbookTools = this.logbookTools.getTools();
     const systemTools = this.systemTools.getTools();
     
     // Combine all tools
-    const allTools = [...todoTools, ...projectTools, ...areaTools, ...tagTools, ...checklistTools, ...bulkTools, ...logbookTools, ...systemTools];
+    const allTools = [...todoTools, ...projectTools, ...areaTools, ...tagTools, ...bulkTools, ...logbookTools, ...systemTools];
     
     // Update server capabilities
     this.server.registerCapabilities({
@@ -122,16 +118,6 @@ export class Things3Server {
         case 'tags.remove':
           return { toolResult: await this.tagTools.removeTags(args as any) };
         
-        // Checklist tools
-        case 'checklist.add':
-          return { toolResult: await this.checklistTools.add(args as any) };
-        case 'checklist.update':
-          return { toolResult: await this.checklistTools.update(args as any) };
-        case 'checklist.reorder':
-          return { toolResult: await this.checklistTools.reorder(args as any) };
-        case 'checklist.delete':
-          return { toolResult: await this.checklistTools.delete(args as any) };
-        
         // Bulk tools
         case 'bulk.move':
           return { toolResult: await this.bulkTools.move(args as any) };
@@ -157,7 +143,6 @@ export class Things3Server {
     console.log(`Registered ${projectTools.length} Project tools`);
     console.log(`Registered ${areaTools.length} Area tools`);
     console.log(`Registered ${tagTools.length} Tag tools`);
-    console.log(`Registered ${checklistTools.length} Checklist tools`);
     console.log(`Registered ${bulkTools.length} Bulk tools`);
     console.log(`Registered ${logbookTools.length} Logbook tools`);
     console.log(`Registered ${systemTools.length} System tools`);

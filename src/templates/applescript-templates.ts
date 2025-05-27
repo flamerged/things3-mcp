@@ -204,8 +204,8 @@ export function createTodo(
   
   // Add tags if provided
   if (tags && tags.length > 0) {
-    const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
-    script += `  set tag names of newTodo to "${tagNames}"\n`;
+    const tagList = tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of newTodo to "${tagList}"\n`;
   }
   
   // Move to project or area if specified
@@ -273,8 +273,8 @@ export function updateTodo(
   
   // Update tags (replace all)
   if (updates.tags !== undefined) {
-    const tagNames = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
-    script += `  set tag names of t to "${tagNames}"\n`;
+    const tagList = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of t to "${tagList}"\n`;
   }
   
   // Move to new project/area
@@ -390,15 +390,19 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
   }
   
   // Build result record
+  script += '      set isCompleted to (status of p is completed)\n';
+  script += '      set areaRef to area of p\n';
+  script += '      if areaRef is missing value then\n';
+  script += '        set areaIdStr to "null"\n';
+  script += '      else\n';
+  script += '        set areaIdStr to "\\"" & (id of areaRef) & "\\""\n';
+  script += '      end if\n';
   script += '      set projectRecord to "{"';
   script += ' & "\\"id\\":\\"" & (id of p) & "\\","';
   script += ' & "\\"name\\":\\"" & (name of p) & "\\","';
-  script += ' & "\\"completed\\":" & (status of p is completed)';
-  
-  // Add area if present
+  script += ' & "\\"completed\\":" & isCompleted';
   script += ' & ","';
-  script += ' & "\\"areaId\\":" & (if area of p is missing value then "null" else "\\"" & (id of area of p) & "\\"")';
-  
+  script += ' & "\\"areaId\\":" & areaIdStr';
   script += ' & "}"\n';
   script += '      set end of results to projectRecord\n';
   
@@ -424,28 +428,21 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
 /**
  * Generate AppleScript to list areas
  */
-export function listAreas(includeHidden?: boolean): string {
+export function listAreas(_includeHidden?: boolean): string {
   let script = 'tell application "Things3"\n';
   script += '  set areaList to areas\n';
   script += '  set results to {}\n';
   script += '  repeat with a in areaList\n';
   
-  // Filter by visibility if specified
-  if (includeHidden === false) {
-    script += '    if visible of a is true then\n';
-  }
+  // Note: Areas in Things3 don't have a visible property, so we ignore includeHidden
   
   // Build result record
-  script += '      set areaRecord to "{"';
+  script += '    set areaRecord to "{"';
   script += ' & "\\"id\\":\\"" & (id of a) & "\\","';
   script += ' & "\\"name\\":\\"" & (name of a) & "\\","';
-  script += ' & "\\"visible\\":" & (visible of a)';
+  script += ' & "\\"visible\\":true"'; // Always true since we can't filter
   script += ' & "}"\n';
-  script += '      set end of results to areaRecord\n';
-  
-  if (includeHidden === false) {
-    script += '    end if\n';
-  }
+  script += '    set end of results to areaRecord\n';
   
   script += '  end repeat\n';
   script += '  return "[" & (my joinList(results, ",")) & "]"\n';
@@ -576,8 +573,8 @@ export function createProject(
   
   // Add tags if provided
   if (tags && tags.length > 0) {
-    const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
-    script += `  set tag names of newProject to "${tagNames}"\n`;
+    const tagList = tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of newProject to "${tagList}"\n`;
   }
   
   // Move to area if specified
@@ -650,8 +647,8 @@ export function updateProject(
   
   // Update tags (replace all)
   if (updates.tags !== undefined) {
-    const tagNames = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
-    script += `  set tag names of p to "${tagNames}"\n`;
+    const tagList = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of p to "${tagList}"\n`;
   }
   
   // Move to new area
@@ -742,30 +739,31 @@ export function addTagsToItems(itemIds: string[], tags: string[]): string {
   let script = 'tell application "Things3"\n';
   script += '  set updatedCount to 0\n';
   
-  // Convert tags array to comma-separated string
-  const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
+  // Convert tags to comma-separated string
+  const newTagsString = tags.map(tag => bridge.escapeString(tag)).join(',');
+  script += `  set newTagsString to "${newTagsString}"\n`;
   
   for (const itemId of itemIds) {
     const escapedId = bridge.escapeString(itemId);
     script += '  try\n';
     // Try as a to do first
-    script += `    set item to to do id "${escapedId}"\n`;
-    script += `    set currentTags to tag names of item\n`;
-    script += `    if currentTags is missing value then\n`;
-    script += `      set tag names of item to "${tagNames}"\n`;
+    script += `    set targetItem to to do id "${escapedId}"\n`;
+    script += `    set currentTags to tag names of targetItem\n`;
+    script += `    if currentTags is missing value or currentTags is "" then\n`;
+    script += `      set tag names of targetItem to newTagsString\n`;
     script += `    else\n`;
-    script += `      set tag names of item to currentTags & "," & "${tagNames}"\n`;
+    script += `      set tag names of targetItem to currentTags & "," & newTagsString\n`;
     script += `    end if\n`;
     script += '    set updatedCount to updatedCount + 1\n';
     script += '  on error\n';
     script += '    try\n';
     // If not a todo, try as a project
-    script += `      set item to project id "${escapedId}"\n`;
-    script += `      set currentTags to tag names of item\n`;
-    script += `      if currentTags is missing value then\n`;
-    script += `        set tag names of item to "${tagNames}"\n`;
+    script += `      set targetItem to project id "${escapedId}"\n`;
+    script += `      set currentTags to tag names of targetItem\n`;
+    script += `      if currentTags is missing value or currentTags is "" then\n`;
+    script += `        set tag names of targetItem to newTagsString\n`;
     script += `      else\n`;
-    script += `        set tag names of item to currentTags & "," & "${tagNames}"\n`;
+    script += `        set tag names of targetItem to currentTags & "," & newTagsString\n`;
     script += `      end if\n`;
     script += '      set updatedCount to updatedCount + 1\n';
     script += '    end try\n';
@@ -793,8 +791,8 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
     const escapedId = bridge.escapeString(itemId);
     script += '  try\n';
     // Try as a to do first
-    script += `    set item to to do id "${escapedId}"\n`;
-    script += '    set currentTags to tag names of item\n';
+    script += `    set targetItem to to do id "${escapedId}"\n`;
+    script += '    set currentTags to tag names of targetItem\n';
     script += '    if currentTags is not missing value then\n';
     script += '      set AppleScript\'s text item delimiters to ","\n';
     script += '      set tagList to text items of currentTags\n';
@@ -809,17 +807,17 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
     script += '      set newTags to newTagList as string\n';
     script += '      set AppleScript\'s text item delimiters to ""\n';
     script += '      if newTags is "" then\n';
-    script += '        set tag names of item to missing value\n';
+    script += '        set tag names of targetItem to missing value\n';
     script += '      else\n';
-    script += '        set tag names of item to newTags\n';
+    script += '        set tag names of targetItem to newTags\n';
     script += '      end if\n';
     script += '      set updatedCount to updatedCount + 1\n';
     script += '    end if\n';
     script += '  on error\n';
     script += '    try\n';
     // If not a todo, try as a project
-    script += `      set item to project id "${escapedId}"\n`;
-    script += '      set currentTags to tag names of item\n';
+    script += `      set targetItem to project id "${escapedId}"\n`;
+    script += '      set currentTags to tag names of targetItem\n';
     script += '      if currentTags is not missing value then\n';
     script += '        set AppleScript\'s text item delimiters to ","\n';
     script += '        set tagList to text items of currentTags\n';
@@ -834,9 +832,9 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
     script += '        set newTags to newTagList as string\n';
     script += '        set AppleScript\'s text item delimiters to ""\n';
     script += '        if newTags is "" then\n';
-    script += '          set tag names of item to missing value\n';
+    script += '          set tag names of targetItem to missing value\n';
     script += '        else\n';
-    script += '          set tag names of item to newTags\n';
+    script += '          set tag names of targetItem to newTags\n';
     script += '        end if\n';
     script += '        set updatedCount to updatedCount + 1\n';
     script += '      end if\n';
@@ -860,14 +858,16 @@ export function listTags(): string {
   script += '  repeat with t in tagList\n';
   
   // Build result record
+  script += '    set parentRef to parent tag of t\n';
+  script += '    if parentRef is missing value then\n';
+  script += '      set parentIdStr to "null"\n';
+  script += '    else\n';
+  script += '      set parentIdStr to "\\"" & (id of parentRef) & "\\""\n';
+  script += '    end if\n';
   script += '    set tagRecord to "{"';
   script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
-  script += ' & "\\"name\\":\\"" & (name of t) & "\\""';
-  
-  // Add parent tag if present
-  script += ' & ","';
-  script += ' & "\\"parentTagId\\":" & (if parent tag of t is missing value then "null" else "\\"" & (id of parent tag of t) & "\\"")';
-  
+  script += ' & "\\"name\\":\\"" & (name of t) & "\\","';
+  script += ' & "\\"parentTagId\\":" & parentIdStr';
   script += ' & "}"\n';
   script += '    set end of results to tagRecord\n';
   
@@ -886,178 +886,6 @@ export function listTags(): string {
   return script;
 }
 
-/**
- * Generate AppleScript to add checklist items to a TODO
- */
-export function addChecklistItems(
-  todoId: string,
-  items: Array<{ title: string; completed?: boolean }>
-): string {
-  const escapedId = bridge.escapeString(todoId);
-  
-  let script = 'tell application "Things3"\n';
-  script += '  try\n';
-  script += `    set targetTodo to to do id "${escapedId}"\n`;
-  script += '    set addedCount to 0\n';
-  
-  // Add each checklist item
-  for (const item of items) {
-    const escapedTitle = bridge.escapeString(item.title);
-    const completedStatus = item.completed ? 'true' : 'false';
-    
-    script += `    tell targetTodo\n`;
-    script += `      make new checklist item with properties {title:"${escapedTitle}", completed:${completedStatus}}\n`;
-    script += `    end tell\n`;
-    script += '    set addedCount to addedCount + 1\n';
-  }
-  
-  script += '    return addedCount\n';
-  script += '  on error errorMessage\n';
-  script += '    error "Failed to add checklist items: " & errorMessage\n';
-  script += '  end try\n';
-  script += 'end tell';
-  
-  return script;
-}
-
-/**
- * Generate AppleScript to update a checklist item
- */
-export function updateChecklistItem(
-  todoId: string,
-  itemIndex: number,
-  updates: { title?: string; completed?: boolean }
-): string {
-  const escapedId = bridge.escapeString(todoId);
-  
-  let script = 'tell application "Things3"\n';
-  script += '  try\n';
-  script += `    set targetTodo to to do id "${escapedId}"\n`;
-  script += `    set targetItem to item ${itemIndex + 1} of checklist items of targetTodo\n`;
-  
-  // Update properties
-  if (updates.title !== undefined) {
-    const escapedTitle = bridge.escapeString(updates.title);
-    script += `    set title of targetItem to "${escapedTitle}"\n`;
-  }
-  
-  if (updates.completed !== undefined) {
-    script += `    set completed of targetItem to ${updates.completed ? 'true' : 'false'}\n`;
-  }
-  
-  script += '    return "success"\n';
-  script += '  on error errorMessage\n';
-  script += '    error "Failed to update checklist item: " & errorMessage\n';
-  script += '  end try\n';
-  script += 'end tell';
-  
-  return script;
-}
-
-/**
- * Generate AppleScript to reorder checklist items
- */
-export function reorderChecklist(todoId: string, newOrder: number[]): string {
-  const escapedId = bridge.escapeString(todoId);
-  
-  let script = 'tell application "Things3"\n';
-  script += '  try\n';
-  script += `    set targetTodo to to do id "${escapedId}"\n`;
-  script += '    set checkItems to checklist items of targetTodo\n';
-  script += '    set itemCount to count of checkItems\n';
-  
-  // Validate indices
-  script += `    if ${newOrder.length} is not equal to itemCount then\n`;
-  script += '      error "New order count does not match checklist item count"\n';
-  script += '    end if\n';
-  
-  // Create temporary storage for items
-  script += '    set tempItems to {}\n';
-  script += '    repeat with i from 1 to itemCount\n';
-  script += '      set end of tempItems to {title:title of item i of checkItems, completed:completed of item i of checkItems}\n';
-  script += '    end repeat\n';
-  
-  // Delete all existing items
-  script += '    repeat with i from itemCount to 1 by -1\n';
-  script += '      delete item i of checklist items of targetTodo\n';
-  script += '    end repeat\n';
-  
-  // Re-add items in new order
-  for (let i = 0; i < newOrder.length; i++) {
-    const originalIndex = (newOrder[i] ?? 0) + 1; // Convert to 1-based
-    script += `    set itemData to item ${originalIndex} of tempItems\n`;
-    script += '    tell targetTodo\n';
-    script += '      make new checklist item with properties {title:(title of itemData), completed:(completed of itemData)}\n';
-    script += '    end tell\n';
-  }
-  
-  script += '    return "success"\n';
-  script += '  on error errorMessage\n';
-  script += '    error "Failed to reorder checklist: " & errorMessage\n';
-  script += '  end try\n';
-  script += 'end tell';
-  
-  return script;
-}
-
-/**
- * Generate AppleScript to delete checklist items
- */
-export function deleteChecklistItems(todoId: string, itemIndices: number[]): string {
-  const escapedId = bridge.escapeString(todoId);
-  // Sort indices in descending order to avoid index shifting issues
-  const sortedIndices = [...itemIndices].sort((a, b) => b - a);
-  
-  let script = 'tell application "Things3"\n';
-  script += '  try\n';
-  script += `    set targetTodo to to do id "${escapedId}"\n`;
-  script += '    set deletedCount to 0\n';
-  
-  // Delete items in reverse order
-  for (const index of sortedIndices) {
-    script += `    delete item ${index + 1} of checklist items of targetTodo\n`;
-    script += '    set deletedCount to deletedCount + 1\n';
-  }
-  
-  script += '    return deletedCount\n';
-  script += '  on error errorMessage\n';
-  script += '    error "Failed to delete checklist items: " & errorMessage\n';
-  script += '  end try\n';
-  script += 'end tell';
-  
-  return script;
-}
-
-/**
- * Generate AppleScript to get checklist items from a TODO
- */
-export function getChecklistItems(todoId: string): string {
-  const escapedId = bridge.escapeString(todoId);
-  
-  return `
-tell application "Things3"
-  try
-    set targetTodo to to do id "${escapedId}"
-    set checklistData to {}
-    set checkItems to checklist items of targetTodo
-    repeat with i from 1 to count of checkItems
-      set checkItem to item i of checkItems
-      set itemRecord to "{\\"index\\":" & (i - 1) & ",\\"title\\":\\"" & (title of checkItem) & "\\",\\"completed\\":" & (completed of checkItem) & "}"
-      set end of checklistData to itemRecord
-    end repeat
-    return "[" & (my joinList(checklistData, ",")) & "]"
-  on error errorMessage
-    error "Failed to get checklist items: " & errorMessage
-  end try
-end tell
-
-on joinList(lst, delim)
-  set AppleScript's text item delimiters to delim
-  set txt to lst as text
-  set AppleScript's text item delimiters to ""
-  return txt
-end joinList`;
-}
 
 /**
  * Generate AppleScript to bulk move TODOs to a project or area
@@ -1077,13 +905,16 @@ export function bulkMoveTodos(
     
     if (projectId) {
       const escapedProjectId = bridge.escapeString(projectId);
-      script += `    move t to project id "${escapedProjectId}"\n`;
+      script += `    set targetProject to project id "${escapedProjectId}"\n`;
+      script += '    set project of t to targetProject\n';
     } else if (areaId) {
       const escapedAreaId = bridge.escapeString(areaId);
-      script += `    move t to area id "${escapedAreaId}"\n`;
+      script += `    set targetArea to area id "${escapedAreaId}"\n`;
+      script += '    set area of t to targetArea\n';
     } else {
       // Move to inbox if neither project nor area specified
-      script += '    move t to list "Inbox"\n';
+      script += '    set project of t to missing value\n';
+      script += '    set area of t to missing value\n';
     }
     
     script += '    set movedCount to movedCount + 1\n';
@@ -1174,11 +1005,11 @@ export function searchLogbook(
     script += '        if completionDate is not missing value then\n';
     
     if (fromDate) {
-      script += `          if completionDate ≥ date "${fromDate}" then\n`;
+      script += `          if completionDate is greater than or equal to date "${fromDate}" then\n`;
     }
     
     if (toDate) {
-      script += `            if completionDate ≤ date "${toDate}" then\n`;
+      script += `            if completionDate is less than or equal to date "${toDate}" then\n`;
     }
   }
   
