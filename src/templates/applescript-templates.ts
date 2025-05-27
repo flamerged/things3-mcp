@@ -705,6 +705,152 @@ end tell`;
 }
 
 /**
+ * Generate AppleScript to create a new tag
+ */
+export function createTag(name: string, parentTagId?: string): string {
+  const escapedName = bridge.escapeString(name);
+  
+  let script = 'tell application "Things3"\n';
+  
+  if (parentTagId) {
+    const escapedParentId = bridge.escapeString(parentTagId);
+    // Create as a child of an existing tag
+    script += `  try\n`;
+    script += `    set parentTag to tag id "${escapedParentId}"\n`;
+    script += `    set newTag to make new tag with properties {name:"${escapedName}"} at parentTag\n`;
+    script += `    return id of newTag\n`;
+    script += `  on error\n`;
+    script += `    -- If parent not found, create at top level\n`;
+    script += `    set newTag to make new tag with properties {name:"${escapedName}"}\n`;
+    script += `    return id of newTag\n`;
+    script += `  end try\n`;
+  } else {
+    // Create at top level
+    script += `  set newTag to make new tag with properties {name:"${escapedName}"}\n`;
+    script += '  return id of newTag\n';
+  }
+  
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to add tags to items (TODOs or Projects)
+ */
+export function addTagsToItems(itemIds: string[], tags: string[]): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set updatedCount to 0\n';
+  
+  // Convert tags array to comma-separated string
+  const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
+  
+  for (const itemId of itemIds) {
+    const escapedId = bridge.escapeString(itemId);
+    script += '  try\n';
+    // Try as a to do first
+    script += `    set item to to do id "${escapedId}"\n`;
+    script += `    set currentTags to tag names of item\n`;
+    script += `    if currentTags is missing value then\n`;
+    script += `      set tag names of item to "${tagNames}"\n`;
+    script += `    else\n`;
+    script += `      set tag names of item to currentTags & "," & "${tagNames}"\n`;
+    script += `    end if\n`;
+    script += '    set updatedCount to updatedCount + 1\n';
+    script += '  on error\n';
+    script += '    try\n';
+    // If not a todo, try as a project
+    script += `      set item to project id "${escapedId}"\n`;
+    script += `      set currentTags to tag names of item\n`;
+    script += `      if currentTags is missing value then\n`;
+    script += `        set tag names of item to "${tagNames}"\n`;
+    script += `      else\n`;
+    script += `        set tag names of item to currentTags & "," & "${tagNames}"\n`;
+    script += `      end if\n`;
+    script += '      set updatedCount to updatedCount + 1\n';
+    script += '    end try\n';
+    script += '  end try\n';
+  }
+  
+  script += '  return updatedCount\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to remove tags from items
+ */
+export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set updatedCount to 0\n';
+  
+  // Create a list of tags to remove
+  const tagsToRemove = tags.map(tag => `"${bridge.escapeString(tag)}"`).join(', ');
+  script += `  set tagsToRemove to {${tagsToRemove}}\n`;
+  
+  for (const itemId of itemIds) {
+    const escapedId = bridge.escapeString(itemId);
+    script += '  try\n';
+    // Try as a to do first
+    script += `    set item to to do id "${escapedId}"\n`;
+    script += '    set currentTags to tag names of item\n';
+    script += '    if currentTags is not missing value then\n';
+    script += '      set AppleScript\'s text item delimiters to ","\n';
+    script += '      set tagList to text items of currentTags\n';
+    script += '      set newTagList to {}\n';
+    script += '      repeat with tagName in tagList\n';
+    script += '        set tagName to (tagName as string)\n';
+    script += '        if tagName is not in tagsToRemove then\n';
+    script += '          set end of newTagList to tagName\n';
+    script += '        end if\n';
+    script += '      end repeat\n';
+    script += '      set AppleScript\'s text item delimiters to ","\n';
+    script += '      set newTags to newTagList as string\n';
+    script += '      set AppleScript\'s text item delimiters to ""\n';
+    script += '      if newTags is "" then\n';
+    script += '        set tag names of item to missing value\n';
+    script += '      else\n';
+    script += '        set tag names of item to newTags\n';
+    script += '      end if\n';
+    script += '      set updatedCount to updatedCount + 1\n';
+    script += '    end if\n';
+    script += '  on error\n';
+    script += '    try\n';
+    // If not a todo, try as a project
+    script += `      set item to project id "${escapedId}"\n`;
+    script += '      set currentTags to tag names of item\n';
+    script += '      if currentTags is not missing value then\n';
+    script += '        set AppleScript\'s text item delimiters to ","\n';
+    script += '        set tagList to text items of currentTags\n';
+    script += '        set newTagList to {}\n';
+    script += '        repeat with tagName in tagList\n';
+    script += '          set tagName to (tagName as string)\n';
+    script += '          if tagName is not in tagsToRemove then\n';
+    script += '            set end of newTagList to tagName\n';
+    script += '          end if\n';
+    script += '        end repeat\n';
+    script += '        set AppleScript\'s text item delimiters to ","\n';
+    script += '        set newTags to newTagList as string\n';
+    script += '        set AppleScript\'s text item delimiters to ""\n';
+    script += '        if newTags is "" then\n';
+    script += '          set tag names of item to missing value\n';
+    script += '        else\n';
+    script += '          set tag names of item to newTags\n';
+    script += '        end if\n';
+    script += '        set updatedCount to updatedCount + 1\n';
+    script += '      end if\n';
+    script += '    end try\n';
+    script += '  end try\n';
+  }
+  
+  script += '  return updatedCount\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
  * Generate AppleScript to list tags
  */
 export function listTags(): string {

@@ -7,6 +7,7 @@ import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { TodosTools } from './tools/todos.js';
 import { ProjectTools } from './tools/projects.js';
 import { AreaTools } from './tools/areas.js';
+import { TagTools } from './tools/tags.js';
 
 export class Things3Server {
   private server: Server;
@@ -14,6 +15,7 @@ export class Things3Server {
   public todosTools: TodosTools;
   public projectTools: ProjectTools;
   public areaTools: AreaTools;
+  public tagTools: TagTools;
 
   constructor() {
     this.server = new Server(
@@ -32,6 +34,7 @@ export class Things3Server {
     this.todosTools = new TodosTools();
     this.projectTools = new ProjectTools();
     this.areaTools = new AreaTools();
+    this.tagTools = new TagTools();
     this.registerTools();
   }
 
@@ -42,9 +45,10 @@ export class Things3Server {
     const todoTools = TodosTools.getTools();
     const projectTools = ProjectTools.getTools(this.projectTools);
     const areaTools = AreaTools.getTools(this.areaTools);
+    const tagTools = TagTools.getTools(this.tagTools);
     
     // Combine all tools
-    const allTools = [...todoTools, ...projectTools, ...areaTools];
+    const allTools = [...todoTools, ...projectTools, ...areaTools, ...tagTools];
     
     // Update server capabilities
     this.server.registerCapabilities({
@@ -92,6 +96,16 @@ export class Things3Server {
         case 'areas.create':
           return { toolResult: await this.areaTools.createArea(args as any) };
         
+        // Tag tools
+        case 'tags.list':
+          return { toolResult: await this.tagTools.listTags() };
+        case 'tags.create':
+          return { toolResult: await this.tagTools.createTag(args as any) };
+        case 'tags.add':
+          return { toolResult: await this.tagTools.addTags(args as any) };
+        case 'tags.remove':
+          return { toolResult: await this.tagTools.removeTags(args as any) };
+        
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -100,6 +114,7 @@ export class Things3Server {
     console.log(`Registered ${todoTools.length} TODO tools`);
     console.log(`Registered ${projectTools.length} Project tools`);
     console.log(`Registered ${areaTools.length} Area tools`);
+    console.log(`Registered ${tagTools.length} Tag tools`);
     console.log(`Total tools registered: ${allTools.length}`);
   }
 
