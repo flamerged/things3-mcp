@@ -22,15 +22,18 @@ import {
   Things3Error,
 } from '../types/index.js';
 import * as templates from '../templates/applescript-templates.js';
+import { ErrorCorrector } from '../utils/error-correction.js';
 
 /**
  * Handles all TODO-related operations
  */
 export class TodosTools {
   private bridge: AppleScriptBridge;
+  private errorCorrector: ErrorCorrector;
 
   constructor() {
     this.bridge = new AppleScriptBridge();
+    this.errorCorrector = new ErrorCorrector();
   }
 
   /**
@@ -138,34 +141,43 @@ export class TodosTools {
     try {
       await this.bridge.ensureThings3Running();
       
-      // TODO: Add error correction here
+      // Apply error correction
+      const correctionReport = this.errorCorrector.correctTodoCreateParams(params);
+      const correctedParams = correctionReport.correctedData as TodosCreateParams;
+      
+      // Log corrections if any were made
+      if (correctionReport.hasCorrections) {
+        this.errorCorrector.logCorrections(correctionReport);
+      }
       
       const script = templates.createTodo(
-        params.title,
-        params.notes,
-        params.whenDate,
-        params.deadline,
-        params.tags,
-        params.projectId,
-        params.areaId
+        correctedParams.title,
+        correctedParams.notes,
+        correctedParams.whenDate,
+        correctedParams.deadline,
+        correctedParams.tags,
+        correctedParams.projectId,
+        correctedParams.areaId
       );
       
       const todoId = await this.bridge.execute(script);
       
       // Handle checklist items if provided
-      if (params.checklistItems && params.checklistItems.length > 0) {
+      if (correctedParams.checklistItems && correctedParams.checklistItems.length > 0) {
         // TODO: Add checklist items via separate AppleScript
       }
       
       // Handle reminder if provided
-      if (params.reminder) {
+      if (correctedParams.reminder) {
         // TODO: Add reminder via separate AppleScript
       }
       
       return {
         success: true,
         id: todoId,
-        correctionsMade: [],
+        correctionsMade: correctionReport.corrections.map(c => 
+          `${c.field}: ${c.reason}`
+        ),
       };
     } catch (error) {
       if (error instanceof Things3Error) {
@@ -186,25 +198,34 @@ export class TodosTools {
     try {
       await this.bridge.ensureThings3Running();
       
-      // TODO: Add error correction here
+      // Apply error correction
+      const correctionReport = this.errorCorrector.correctTodoUpdateParams(params);
+      const correctedParams = correctionReport.correctedData as TodosUpdateParams;
+      
+      // Log corrections if any were made
+      if (correctionReport.hasCorrections) {
+        this.errorCorrector.logCorrections(correctionReport);
+      }
       
       const updates: any = {};
       
-      if (params.title !== undefined) updates.title = params.title;
-      if (params.notes !== undefined) updates.notes = params.notes;
-      if (params.whenDate !== undefined) updates.whenDate = params.whenDate;
-      if (params.deadline !== undefined) updates.deadline = params.deadline;
-      if (params.tags !== undefined) updates.tags = params.tags;
-      if (params.projectId !== undefined) updates.projectId = params.projectId;
-      if (params.areaId !== undefined) updates.areaId = params.areaId;
+      if (correctedParams.title !== undefined) updates.title = correctedParams.title;
+      if (correctedParams.notes !== undefined) updates.notes = correctedParams.notes;
+      if (correctedParams.whenDate !== undefined) updates.whenDate = correctedParams.whenDate;
+      if (correctedParams.deadline !== undefined) updates.deadline = correctedParams.deadline;
+      if (correctedParams.tags !== undefined) updates.tags = correctedParams.tags;
+      if (correctedParams.projectId !== undefined) updates.projectId = correctedParams.projectId;
+      if (correctedParams.areaId !== undefined) updates.areaId = correctedParams.areaId;
       
-      const script = templates.updateTodo(params.id, updates);
+      const script = templates.updateTodo(correctedParams.id, updates);
       
       await this.bridge.execute(script);
       
       return {
         success: true,
-        correctionsMade: [],
+        correctionsMade: correctionReport.corrections.map(c => 
+          `${c.field}: ${c.reason}`
+        ),
       };
     } catch (error) {
       if (error instanceof Things3Error) {
