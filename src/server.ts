@@ -9,7 +9,7 @@ import { TodosTools } from './tools/todos.js';
 export class Things3Server {
   private server: Server;
   private transport: StdioServerTransport;
-  private todosTools: TodosTools;
+  public todosTools: TodosTools;
 
   constructor() {
     this.server = new Server(

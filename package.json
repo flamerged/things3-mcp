@@ -11,9 +11,10 @@
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test": "jest",
+    "test": "npm run test:unit",
     "test:unit": "jest --testPathPattern=unit",
-    "test:integration": "jest --testPathPattern=integration",
+    "test:integration": "jest --config jest.config.integration.js",
+    "test:all": "npm run test:unit && npm run test:integration",
     "prepare": "husky install"
   },
   "keywords": [

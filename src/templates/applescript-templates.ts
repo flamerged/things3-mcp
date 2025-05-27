@@ -62,16 +62,11 @@ export function listTodos(
     script += `    if (name of t contains "${escaped}" or notes of t contains "${escaped}") then\n`;
   }
   
-  // Build result record
+  // Build result record - simplified without when date for now
   script += '      set todoRecord to "{"';
   script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
   script += ' & "\\"title\\":\\"" & (name of t) & "\\","';
   script += ' & "\\"completed\\":" & (status of t is completed)';
-  
-  // Add when date if present
-  script += ' & ","';
-  script += ' & "\\"whenDate\\":" & (if when date of t is missing value then "null" else "\\"" & (when date of t as string) & "\\"")';
-  
   script += ' & "}"\n';
   script += '      set end of results to todoRecord\n';
   
@@ -112,10 +107,29 @@ tell application "Things3"
     set todoRecord to "{"
     set todoRecord to todoRecord & "\\"id\\":\\"" & (id of t) & "\\","
     set todoRecord to todoRecord & "\\"title\\":\\"" & (name of t) & "\\","
-    set todoRecord to todoRecord & "\\"notes\\":" & (if notes of t is missing value then "null" else "\\"" & (notes of t) & "\\"") & ","
+    
+    -- Handle notes
+    if notes of t is missing value then
+      set todoRecord to todoRecord & "\\"notes\\":null,"
+    else
+      set todoRecord to todoRecord & "\\"notes\\":\\"" & (notes of t) & "\\","
+    end if
+    
     set todoRecord to todoRecord & "\\"completed\\":" & (status of t is completed) & ","
-    set todoRecord to todoRecord & "\\"whenDate\\":" & (if when date of t is missing value then "null" else "\\"" & (when date of t as string) & "\\"") & ","
-    set todoRecord to todoRecord & "\\"deadline\\":" & (if due date of t is missing value then "null" else "\\"" & (due date of t as string) & "\\"") & ","
+    
+    -- Handle when date (activation date in Things3)
+    if activation date of t is missing value then
+      set todoRecord to todoRecord & "\\"whenDate\\":null,"
+    else
+      set todoRecord to todoRecord & "\\"whenDate\\":\\"" & (activation date of t as string) & "\\","
+    end if
+    
+    -- Handle deadline
+    if due date of t is missing value then
+      set todoRecord to todoRecord & "\\"deadline\\":null,"
+    else
+      set todoRecord to todoRecord & "\\"deadline\\":\\"" & (due date of t as string) & "\\","
+    end if
     
     -- Get tags
     set tagList to {}
@@ -125,10 +139,18 @@ tell application "Things3"
     set todoRecord to todoRecord & "\\"tags\\":[" & (my joinList(tagList, ",")) & "],"
     
     -- Get project
-    set todoRecord to todoRecord & "\\"projectId\\":" & (if project of t is missing value then "null" else "\\"" & (id of project of t) & "\\"") & ","
+    if project of t is missing value then
+      set todoRecord to todoRecord & "\\"projectId\\":null,"
+    else
+      set todoRecord to todoRecord & "\\"projectId\\":\\"" & (id of project of t) & "\\","
+    end if
     
     -- Get area
-    set todoRecord to todoRecord & "\\"areaId\\":" & (if area of t is missing value then "null" else "\\"" & (id of area of t) & "\\"")
+    if area of t is missing value then
+      set todoRecord to todoRecord & "\\"areaId\\":null"
+    else
+      set todoRecord to todoRecord & "\\"areaId\\":\\"" & (id of area of t) & "\\""
+    end if
     
     set todoRecord to todoRecord & "}"
     return todoRecord
@@ -173,7 +195,7 @@ export function createTodo(
   
   // Set dates if provided
   if (whenDate) {
-    script += `  set when date of newTodo to date "${whenDate}"\n`;
+    script += `  set activation date of newTodo to date "${whenDate}"\n`;
   }
   
   if (deadline) {
@@ -182,11 +204,8 @@ export function createTodo(
   
   // Add tags if provided
   if (tags && tags.length > 0) {
-    for (const tag of tags) {
-      const escapedTag = bridge.escapeString(tag);
-      script += `  set tagRef to tag "${escapedTag}"\n`;
-      script += '  add tagRef to tags of newTodo\n';
-    }
+    const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of newTodo to "${tagNames}"\n`;
   }
   
   // Move to project or area if specified
@@ -238,9 +257,9 @@ export function updateTodo(
   // Update dates
   if (updates.whenDate !== undefined) {
     if (updates.whenDate === null) {
-      script += '  set when date of t to missing value\n';
+      script += '  set activation date of t to missing value\n';
     } else {
-      script += `  set when date of t to date "${updates.whenDate}"\n`;
+      script += `  set activation date of t to date "${updates.whenDate}"\n`;
     }
   }
   
@@ -254,12 +273,8 @@ export function updateTodo(
   
   // Update tags (replace all)
   if (updates.tags !== undefined) {
-    script += '  set tags of t to {}\n';
-    for (const tag of updates.tags) {
-      const escapedTag = bridge.escapeString(tag);
-      script += `  set tagRef to tag "${escapedTag}"\n`;
-      script += '  add tagRef to tags of t\n';
-    }
+    const tagNames = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of t to "${tagNames}"\n`;
   }
   
   // Move to new project/area

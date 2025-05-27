@@ -1,4 +1,13 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-npm test
+# Run unit tests first
+npm run test:unit
+
+# Run integration tests if Things3 is available
+if command -v osascript >/dev/null 2>&1; then
+  echo "🚨 Running integration tests with Things3..."
+  npm run test:integration
+else
+  echo "❌ Skipping integration tests (macOS/AppleScript not available)"
+fi
