@@ -19,6 +19,7 @@ export interface CacheStats {
  * Cache manager with TTL support for Things3 data
  */
 export class CacheManager {
+  private static instance: CacheManager;
   private cache: Map<string, CacheEntry<unknown>> = new Map();
   private stats: CacheStats = {
     hits: 0,
@@ -29,6 +30,16 @@ export class CacheManager {
   
   // Default TTL: 5 minutes (300 seconds)
   private readonly defaultTTL = 300 * 1000;
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): CacheManager {
+    if (!CacheManager.instance) {
+      CacheManager.instance = new CacheManager();
+    }
+    return CacheManager.instance;
+  }
 
   /**
    * Get a value from the cache

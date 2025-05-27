@@ -149,7 +149,10 @@ export interface TodosDeleteResult extends OperationResult {
  */
 export interface ChecklistAddParams {
   todoId: string;
-  items: string[];
+  items: Array<{
+    title: string;
+    completed?: boolean;
+  }>;
 }
 
 /**
@@ -164,7 +167,7 @@ export interface ChecklistAddResult extends OperationResult {
  */
 export interface ChecklistUpdateParams {
   todoId: string;
-  checklistItemId: string;
+  itemIndex: number;
   title?: string;
   completed?: boolean;
 }
@@ -174,7 +177,7 @@ export interface ChecklistUpdateParams {
  */
 export interface ChecklistReorderParams {
   todoId: string;
-  checklistItemIds: string[];
+  newOrder: number[];
 }
 
 /**
@@ -182,7 +185,7 @@ export interface ChecklistReorderParams {
  */
 export interface ChecklistDeleteParams {
   todoId: string;
-  checklistItemIds: string[];
+  itemIndices: number[];
 }
 
 /**
@@ -347,7 +350,7 @@ export interface TagsRemoveResult extends OperationResult {
  * Parameters for bulk.move tool
  */
 export interface BulkMoveParams {
-  todoIds: string[];
+  todoIds: string | string[];
   projectId?: string | null;
   areaId?: string | null;
 }
@@ -363,7 +366,7 @@ export interface BulkMoveResult extends OperationResult {
  * Parameters for bulk.updateDates tool
  */
 export interface BulkUpdateDatesParams {
-  todoIds: string[];
+  todoIds: string | string[];
   whenDate?: string | null;
   deadline?: string | null;
 }
@@ -382,10 +385,8 @@ export interface BulkUpdateDatesResult extends OperationResult {
  */
 export interface LogbookSearchParams {
   searchText?: string;
-  completedAfter?: string;
-  completedBefore?: string;
-  projectId?: string;
-  tags?: string[];
+  fromDate?: string;
+  toDate?: string;
   limit?: number;
 }
 
