@@ -463,6 +463,248 @@ export function listAreas(includeHidden?: boolean): string {
 }
 
 /**
+ * Generate AppleScript to get a project by ID
+ */
+export function getProjectById(id: string): string {
+  const escapedId = bridge.escapeString(id);
+  
+  return `
+tell application "Things3"
+  try
+    set p to project id "${escapedId}"
+    
+    set projectRecord to "{"
+    set projectRecord to projectRecord & "\\"id\\":\\"" & (id of p) & "\\","
+    set projectRecord to projectRecord & "\\"name\\":\\"" & (name of p) & "\\","
+    
+    -- Handle notes
+    if notes of p is missing value then
+      set projectRecord to projectRecord & "\\"notes\\":null,"
+    else
+      set projectRecord to projectRecord & "\\"notes\\":\\"" & (notes of p) & "\\","
+    end if
+    
+    set projectRecord to projectRecord & "\\"completed\\":" & (status of p is completed) & ","
+    
+    -- Handle when date
+    if activation date of p is missing value then
+      set projectRecord to projectRecord & "\\"whenDate\\":null,"
+    else
+      set projectRecord to projectRecord & "\\"whenDate\\":\\"" & (activation date of p as string) & "\\","
+    end if
+    
+    -- Handle deadline
+    if due date of p is missing value then
+      set projectRecord to projectRecord & "\\"deadline\\":null,"
+    else
+      set projectRecord to projectRecord & "\\"deadline\\":\\"" & (due date of p as string) & "\\","
+    end if
+    
+    -- Get tags
+    set tagList to {}
+    repeat with tg in tags of p
+      set end of tagList to "\\"" & (name of tg) & "\\""
+    end repeat
+    set projectRecord to projectRecord & "\\"tags\\":[" & (my joinList(tagList, ",")) & "],"
+    
+    -- Get area
+    if area of p is missing value then
+      set projectRecord to projectRecord & "\\"areaId\\":null,"
+    else
+      set projectRecord to projectRecord & "\\"areaId\\":\\"" & (id of area of p) & "\\","
+    end if
+    
+    -- Get headings (sections within project)
+    set headingsList to {}
+    repeat with h in to dos of p
+      if class of h is project then
+        set headingRecord to "{\\"id\\":\\"" & (id of h) & "\\",\\"title\\":\\"" & (name of h) & "\\"}"
+        set end of headingsList to headingRecord
+      end if
+    end repeat
+    set projectRecord to projectRecord & "\\"headings\\":[" & (my joinList(headingsList, ",")) & "]"
+    
+    set projectRecord to projectRecord & "}"
+    return projectRecord
+  on error
+    return "null"
+  end try
+end tell
+
+on joinList(lst, delim)
+  set AppleScript's text item delimiters to delim
+  set txt to lst as text
+  set AppleScript's text item delimiters to ""
+  return txt
+end joinList`;
+}
+
+/**
+ * Generate AppleScript to create a new project
+ */
+export function createProject(
+  name: string,
+  notes?: string,
+  whenDate?: string,
+  deadline?: string,
+  tags?: string[],
+  areaId?: string,
+  headings?: string[]
+): string {
+  const escapedName = bridge.escapeString(name);
+  const escapedNotes = notes ? bridge.escapeString(notes) : '';
+  
+  let script = 'tell application "Things3"\n';
+  
+  // Create the basic project
+  script += `  set newProject to make new project with properties {name:"${escapedName}"`;
+  
+  if (notes) {
+    script += `, notes:"${escapedNotes}"`;
+  }
+  
+  script += '}\n';
+  
+  // Set dates if provided
+  if (whenDate) {
+    script += `  set activation date of newProject to date "${whenDate}"\n`;
+  }
+  
+  if (deadline) {
+    script += `  set due date of newProject to date "${deadline}"\n`;
+  }
+  
+  // Add tags if provided
+  if (tags && tags.length > 0) {
+    const tagNames = tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of newProject to "${tagNames}"\n`;
+  }
+  
+  // Move to area if specified
+  if (areaId) {
+    script += `  move newProject to area id "${bridge.escapeString(areaId)}"\n`;
+  }
+  
+  // Create headings if provided
+  if (headings && headings.length > 0) {
+    headings.forEach(heading => {
+      const escapedHeading = bridge.escapeString(heading);
+      script += `  make new project with properties {name:"${escapedHeading}"} at beginning of newProject\n`;
+    });
+  }
+  
+  script += '  return id of newProject\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to update a project
+ */
+export function updateProject(
+  id: string,
+  updates: {
+    name?: string;
+    notes?: string | null;
+    whenDate?: string | null;
+    deadline?: string | null;
+    tags?: string[];
+    areaId?: string | null;
+  }
+): string {
+  const escapedId = bridge.escapeString(id);
+  
+  let script = 'tell application "Things3"\n';
+  script += `  set p to project id "${escapedId}"\n`;
+  
+  // Update basic properties
+  if (updates.name !== undefined) {
+    script += `  set name of p to "${bridge.escapeString(updates.name)}"\n`;
+  }
+  
+  if (updates.notes !== undefined) {
+    if (updates.notes === null) {
+      script += '  set notes of p to missing value\n';
+    } else {
+      script += `  set notes of p to "${bridge.escapeString(updates.notes)}"\n`;
+    }
+  }
+  
+  // Update dates
+  if (updates.whenDate !== undefined) {
+    if (updates.whenDate === null) {
+      script += '  set activation date of p to missing value\n';
+    } else {
+      script += `  set activation date of p to date "${updates.whenDate}"\n`;
+    }
+  }
+  
+  if (updates.deadline !== undefined) {
+    if (updates.deadline === null) {
+      script += '  set due date of p to missing value\n';
+    } else {
+      script += `  set due date of p to date "${updates.deadline}"\n`;
+    }
+  }
+  
+  // Update tags (replace all)
+  if (updates.tags !== undefined) {
+    const tagNames = updates.tags.map(tag => bridge.escapeString(tag)).join(',');
+    script += `  set tag names of p to "${tagNames}"\n`;
+  }
+  
+  // Move to new area
+  if (updates.areaId !== undefined) {
+    if (updates.areaId === null) {
+      // Remove from area (move to top level)
+      script += '  set area of p to missing value\n';
+    } else {
+      script += `  move p to area id "${bridge.escapeString(updates.areaId)}"\n`;
+    }
+  }
+  
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to complete a project
+ */
+export function completeProject(id: string): string {
+  const escapedId = bridge.escapeString(id);
+  
+  return `
+tell application "Things3"
+  try
+    set p to project id "${escapedId}"
+    if status of p is open then
+      set status of p to completed
+      return true
+    else
+      return false
+    end if
+  on error
+    return false
+  end try
+end tell`;
+}
+
+/**
+ * Generate AppleScript to create a new area
+ */
+export function createArea(name: string): string {
+  const escapedName = bridge.escapeString(name);
+  
+  return `
+tell application "Things3"
+  set newArea to make new area with properties {name:"${escapedName}"}
+  return id of newArea
+end tell`;
+}
+
+/**
  * Generate AppleScript to list tags
  */
 export function listTags(): string {

@@ -5,11 +5,15 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { TodosTools } from './tools/todos.js';
+import { ProjectTools } from './tools/projects.js';
+import { AreaTools } from './tools/areas.js';
 
 export class Things3Server {
   private server: Server;
   private transport: StdioServerTransport;
   public todosTools: TodosTools;
+  public projectTools: ProjectTools;
+  public areaTools: AreaTools;
 
   constructor() {
     this.server = new Server(
@@ -26,19 +30,26 @@ export class Things3Server {
 
     this.transport = new StdioServerTransport();
     this.todosTools = new TodosTools();
+    this.projectTools = new ProjectTools();
+    this.areaTools = new AreaTools();
     this.registerTools();
   }
 
   private registerTools(): void {
     console.log('Registering Things3 tools...');
     
-    // Register TODO tools
+    // Get all tools
     const todoTools = TodosTools.getTools();
+    const projectTools = ProjectTools.getTools(this.projectTools);
+    const areaTools = AreaTools.getTools(this.areaTools);
+    
+    // Combine all tools
+    const allTools = [...todoTools, ...projectTools, ...areaTools];
     
     // Update server capabilities
     this.server.registerCapabilities({
       tools: Object.fromEntries(
-        todoTools.map(tool => [tool.name, tool])
+        allTools.map(tool => [tool.name, tool])
       ),
     });
     
@@ -47,6 +58,7 @@ export class Things3Server {
       const { name, arguments: args } = request.params;
       
       switch (name) {
+        // TODO tools
         case 'todos.list':
           return { toolResult: await this.todosTools.listTodos(args as any) };
         case 'todos.get':
@@ -61,12 +73,34 @@ export class Things3Server {
           return { toolResult: await this.todosTools.uncompleteTodos(args as any) };
         case 'todos.delete':
           return { toolResult: await this.todosTools.deleteTodos(args as any) };
+        
+        // Project tools
+        case 'projects.list':
+          return { toolResult: await this.projectTools.listProjects(args as any) };
+        case 'projects.get':
+          return { toolResult: await this.projectTools.getProject(args as any) };
+        case 'projects.create':
+          return { toolResult: await this.projectTools.createProject(args as any) };
+        case 'projects.update':
+          return { toolResult: await this.projectTools.updateProject(args as any) };
+        case 'projects.complete':
+          return { toolResult: await this.projectTools.completeProject(args as any) };
+        
+        // Area tools
+        case 'areas.list':
+          return { toolResult: await this.areaTools.listAreas(args as any) };
+        case 'areas.create':
+          return { toolResult: await this.areaTools.createArea(args as any) };
+        
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
     });
     
     console.log(`Registered ${todoTools.length} TODO tools`);
+    console.log(`Registered ${projectTools.length} Project tools`);
+    console.log(`Registered ${areaTools.length} Area tools`);
+    console.log(`Total tools registered: ${allTools.length}`);
   }
 
   async start(): Promise<void> {
