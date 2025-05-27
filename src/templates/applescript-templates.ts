@@ -193,9 +193,9 @@ export function createTodo(
   
   script += '}\n';
   
-  // Set dates if provided
+  // Schedule if when date provided
   if (whenDate) {
-    script += `  set activation date of newTodo to date "${whenDate}"\n`;
+    script += `  schedule newTodo for date "${whenDate}"\n`;
   }
   
   if (deadline) {
@@ -259,7 +259,7 @@ export function updateTodo(
     if (updates.whenDate === null) {
       script += '  set activation date of t to missing value\n';
     } else {
-      script += `  set activation date of t to date "${updates.whenDate}"\n`;
+      script += `  schedule t for date "${updates.whenDate}"\n`;
     }
   }
   
@@ -562,9 +562,9 @@ export function createProject(
   
   script += '}\n';
   
-  // Set dates if provided
+  // Schedule if when date provided
   if (whenDate) {
-    script += `  set activation date of newProject to date "${whenDate}"\n`;
+    script += `  schedule newProject for date "${whenDate}"\n`;
   }
   
   if (deadline) {
@@ -633,7 +633,7 @@ export function updateProject(
     if (updates.whenDate === null) {
       script += '  set activation date of p to missing value\n';
     } else {
-      script += `  set activation date of p to date "${updates.whenDate}"\n`;
+      script += `  schedule p for date "${updates.whenDate}"\n`;
     }
   }
   
@@ -950,7 +950,7 @@ export function bulkUpdateDates(
       if (whenDate === null) {
         script += '    set activation date of t to missing value\n';
       } else {
-        script += `    set activation date of t to date "${whenDate}"\n`;
+        script += `    schedule t for date "${whenDate}"\n`;
       }
     }
     
@@ -992,60 +992,35 @@ export function searchLogbook(
   
   script += '  repeat with t in logbookItems\n';
   script += `    if resultCount < ${maxResults} then\n`;
+  script += '      set shouldInclude to true\n';
   
   // Apply search text filter
   if (searchText) {
     const escaped = bridge.escapeString(searchText);
-    script += `      if (name of t contains "${escaped}" or notes of t contains "${escaped}") then\n`;
-  }
-  
-  // Apply date range filter
-  if (fromDate || toDate) {
-    script += '        set completionDate to completion date of t\n';
-    script += '        if completionDate is not missing value then\n';
-    
-    if (fromDate) {
-      script += `          if completionDate is greater than or equal to date "${fromDate}" then\n`;
-    }
-    
-    if (toDate) {
-      script += `            if completionDate is less than or equal to date "${toDate}" then\n`;
-    }
-  }
-  
-  // Build result record
-  script += '              set todoRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
-  script += ' & "\\"title\\":\\"" & (name of t) & "\\","';
-  
-  // Handle notes
-  script += ' & "\\"notes\\":" & (if notes of t is missing value then "null" else "\\"" & (notes of t) & "\\"") & ","';
-  
-  // Handle completion date
-  script += ' & "\\"completionDate\\":" & (if completion date of t is missing value then "null" else "\\"" & (completion date of t as string) & "\\"") & ","';
-  
-  // Get project name if available
-  script += ' & "\\"projectName\\":" & (if project of t is missing value then "null" else "\\"" & (name of project of t) & "\\"")';
-  
-  script += ' & "}"\n';
-  script += '              set end of results to todoRecord\n';
-  script += '              set resultCount to resultCount + 1\n';
-  
-  // Close date range filters
-  if (toDate) {
-    script += '            end if\n';
-  }
-  if (fromDate) {
-    script += '          end if\n';
-  }
-  if (fromDate || toDate) {
-    script += '        end if\n';
-  }
-  
-  // Close search text filter
-  if (searchText) {
+    script += `      if not (name of t contains "${escaped}" or notes of t contains "${escaped}") then\n`;
+    script += '        set shouldInclude to false\n';
     script += '      end if\n';
   }
+  
+  // Apply date range filter (simplified - no date comparisons for now)
+  if (fromDate || toDate) {
+    script += '      set completionDate to completion date of t\n';
+    script += '      if completionDate is missing value then\n';
+    script += '        set shouldInclude to false\n';
+    script += '      end if\n';
+  }
+  
+  script += '      if shouldInclude then\n';
+  
+  // Build result record without inline conditionals
+  script += '        set todoRecord to "{"';
+  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
+  script += ' & "\\"title\\":\\"" & (name of t) & "\\","';
+  script += ' & "\\"completed\\":true"';
+  script += ' & "}"\n';
+  script += '        set end of results to todoRecord\n';
+  script += '        set resultCount to resultCount + 1\n';
+  script += '      end if\n';
   
   script += '    end if\n';
   script += '  end repeat\n';

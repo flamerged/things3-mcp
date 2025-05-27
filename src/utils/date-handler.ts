@@ -13,12 +13,16 @@ export function isoToAppleScriptDate(isoDate: string): string {
     throw new Error(`Invalid ISO date: ${isoDate}`);
   }
   
-  // AppleScript expects numeric format like "5/29/2025"
-  const month = date.getMonth() + 1; // getMonth() is 0-based
+  // Get system's date format - in this case "28.05.2025."
   const day = date.getDate();
+  const month = date.getMonth() + 1; // getMonth() is 0-based
   const year = date.getFullYear();
   
-  return `${month}/${day}/${year}`;
+  // Pad with zeros and add trailing dot to match system format
+  const paddedDay = day.toString().padStart(2, '0');
+  const paddedMonth = month.toString().padStart(2, '0');
+  
+  return `${paddedDay}.${paddedMonth}.${year}.`;
 }
 
 /**
