@@ -5,16 +5,16 @@ import { Things3Server } from '../../src/server';
 
 describe('Things3Server', () => {
   let server: Things3Server;
-  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
     server = new Things3Server();
   });
 
   afterEach(async () => {
     await server.stop();
-    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   it('should create a server instance', () => {
@@ -31,8 +31,8 @@ describe('Things3Server', () => {
   });
   
   it('should register TODO tools', () => {
-    // The console.log should have been called with the registration message
-    expect(consoleLogSpy).toHaveBeenCalledWith('Registering Things3 tools...');
-    expect(consoleLogSpy).toHaveBeenCalledWith('Registered 7 TODO tools');
+    // The logger should have logged the registration messages
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registering Things3 tools...'));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registered 7 TODO tools'));
   });
 });

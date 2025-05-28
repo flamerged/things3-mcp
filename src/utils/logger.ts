@@ -191,8 +191,8 @@ export class Logger {
    * Output formatted log
    */
   private output(formatted: string): void {
-    // Console output
-    console.log(formatted);
+    // Console output - write to stderr for MCP compatibility
+    console.error(formatted);
     
     // File output
     if (this.fileStream) {

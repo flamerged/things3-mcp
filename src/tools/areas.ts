@@ -66,7 +66,7 @@ export class AreaTools extends CacheAwareBase {
   static getTools(areaTools: AreaTools): Tool[] {
     return [
       {
-        name: 'areas.list',
+        name: 'areas_list',
         description: 'List all areas in Things3',
         inputSchema: {
           type: 'object',
@@ -80,7 +80,7 @@ export class AreaTools extends CacheAwareBase {
         handler: async (params: unknown) => areaTools.listAreas(params as AreasListParams)
       },
       {
-        name: 'areas.create',
+        name: 'areas_create',
         description: 'Create a new area in Things3',
         inputSchema: {
           type: 'object',

@@ -3,7 +3,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { TodosTools } from './tools/todos.js';
 import { ProjectTools } from './tools/projects.js';
 import { AreaTools } from './tools/areas.js';
@@ -11,10 +11,12 @@ import { TagTools } from './tools/tags.js';
 import { BulkTools } from './tools/bulk.js';
 import { LogbookTools } from './tools/logbook.js';
 import { SystemTools } from './tools/system.js';
+import { createLogger } from './utils/logger.js';
 
 export class Things3Server {
   private server: Server;
   private transport: StdioServerTransport;
+  private logger = createLogger('things3');
   public todosTools: TodosTools;
   public projectTools: ProjectTools;
   public areaTools: AreaTools;
@@ -48,7 +50,7 @@ export class Things3Server {
   }
 
   private registerTools(): void {
-    console.log('Registering Things3 tools...');
+    this.logger.info('Registering Things3 tools...');
     
     // Get all tools
     const todoTools = TodosTools.getTools();
@@ -69,69 +71,80 @@ export class Things3Server {
       ),
     });
     
+    // Register handler for tools/list request
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: allTools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema
+        }))
+      };
+    });
+    
     // Register the handler for all tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       
       switch (name) {
         // TODO tools
-        case 'todos.list':
+        case 'todos_list':
           return { toolResult: await this.todosTools.listTodos(args as any) };
-        case 'todos.get':
+        case 'todos_get':
           return { toolResult: await this.todosTools.getTodo(args as any) };
-        case 'todos.create':
+        case 'todos_create':
           return { toolResult: await this.todosTools.createTodo(args as any) };
-        case 'todos.update':
+        case 'todos_update':
           return { toolResult: await this.todosTools.updateTodo(args as any) };
-        case 'todos.complete':
+        case 'todos_complete':
           return { toolResult: await this.todosTools.completeTodos(args as any) };
-        case 'todos.uncomplete':
+        case 'todos_uncomplete':
           return { toolResult: await this.todosTools.uncompleteTodos(args as any) };
-        case 'todos.delete':
+        case 'todos_delete':
           return { toolResult: await this.todosTools.deleteTodos(args as any) };
         
         // Project tools
-        case 'projects.list':
+        case 'projects_list':
           return { toolResult: await this.projectTools.listProjects(args as any) };
-        case 'projects.get':
+        case 'projects_get':
           return { toolResult: await this.projectTools.getProject(args as any) };
-        case 'projects.create':
+        case 'projects_create':
           return { toolResult: await this.projectTools.createProject(args as any) };
-        case 'projects.update':
+        case 'projects_update':
           return { toolResult: await this.projectTools.updateProject(args as any) };
-        case 'projects.complete':
+        case 'projects_complete':
           return { toolResult: await this.projectTools.completeProject(args as any) };
         
         // Area tools
-        case 'areas.list':
+        case 'areas_list':
           return { toolResult: await this.areaTools.listAreas(args as any) };
-        case 'areas.create':
+        case 'areas_create':
           return { toolResult: await this.areaTools.createArea(args as any) };
         
         // Tag tools
-        case 'tags.list':
+        case 'tags_list':
           return { toolResult: await this.tagTools.listTags() };
-        case 'tags.create':
+        case 'tags_create':
           return { toolResult: await this.tagTools.createTag(args as any) };
-        case 'tags.add':
+        case 'tags_add':
           return { toolResult: await this.tagTools.addTags(args as any) };
-        case 'tags.remove':
+        case 'tags_remove':
           return { toolResult: await this.tagTools.removeTags(args as any) };
         
         // Bulk tools
-        case 'bulk.move':
+        case 'bulk_move':
           return { toolResult: await this.bulkTools.move(args as any) };
-        case 'bulk.updateDates':
+        case 'bulk_updateDates':
           return { toolResult: await this.bulkTools.updateDates(args as any) };
         
         // Logbook tools
-        case 'logbook.search':
+        case 'logbook_search':
           return { toolResult: await this.logbookTools.search(args as any) };
         
         // System tools
-        case 'system.refresh':
+        case 'system_refresh':
           return { toolResult: await this.systemTools.refresh() };
-        case 'system.launch':
+        case 'system_launch':
           return { toolResult: await this.systemTools.launch() };
         
         default:
@@ -139,14 +152,14 @@ export class Things3Server {
       }
     });
     
-    console.log(`Registered ${todoTools.length} TODO tools`);
-    console.log(`Registered ${projectTools.length} Project tools`);
-    console.log(`Registered ${areaTools.length} Area tools`);
-    console.log(`Registered ${tagTools.length} Tag tools`);
-    console.log(`Registered ${bulkTools.length} Bulk tools`);
-    console.log(`Registered ${logbookTools.length} Logbook tools`);
-    console.log(`Registered ${systemTools.length} System tools`);
-    console.log(`Total tools registered: ${allTools.length}`);
+    this.logger.info(`Registered ${todoTools.length} TODO tools`);
+    this.logger.info(`Registered ${projectTools.length} Project tools`);
+    this.logger.info(`Registered ${areaTools.length} Area tools`);
+    this.logger.info(`Registered ${tagTools.length} Tag tools`);
+    this.logger.info(`Registered ${bulkTools.length} Bulk tools`);
+    this.logger.info(`Registered ${logbookTools.length} Logbook tools`);
+    this.logger.info(`Registered ${systemTools.length} System tools`);
+    this.logger.info(`Total tools registered: ${allTools.length}`);
   }
 
   async start(): Promise<void> {

@@ -2,30 +2,34 @@
 // ABOUTME: Initializes and starts the MCP server for Things3 integration
 
 import { Things3Server } from './server.js';
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger('things3');
 
 async function main(): Promise<void> {
   try {
+    logger.info('Initializing server...');
     const server = new Things3Server();
     await server.start();
     
-    console.log('Things3 MCP Server started successfully');
+    logger.info('Server started and connected successfully');
     
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
-      console.log('\nShutting down Things3 MCP Server...');
+      logger.info('Received SIGINT, shutting down...');
       await server.stop();
       process.exit(0);
     });
     
     process.on('SIGTERM', async () => {
-      console.log('\nShutting down Things3 MCP Server...');
+      logger.info('Received SIGTERM, shutting down...');
       await server.stop();
       process.exit(0);
     });
   } catch (error) {
-    console.error('Failed to start Things3 MCP Server:', error);
+    logger.error('Failed to start Things3 MCP Server:', error as Error);
     process.exit(1);
   }
 }
 
-main().catch(console.error);
+main().catch(err => logger.error('Unhandled error:', err));

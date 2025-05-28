@@ -66,7 +66,7 @@ export class LogbookTools {
   getTools(): Tool[] {
     return [
       {
-        name: 'logbook.search',
+        name: 'logbook_search',
         description: 'Search completed items in the logbook with optional filters',
         inputSchema: {
           type: 'object',

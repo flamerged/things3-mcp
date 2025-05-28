@@ -226,7 +226,7 @@ describe('ErrorCorrector', () => {
     let consoleSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     });
 
     afterEach(() => {
@@ -241,7 +241,7 @@ describe('ErrorCorrector', () => {
       const report = errorCorrector.correctTodoCreateParams(params);
       errorCorrector.logCorrections(report);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Applied corrections:');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Applied corrections:'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('missing_title'));
     });
 

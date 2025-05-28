@@ -58,7 +58,7 @@ export class SystemTools {
   getTools(): Tool[] {
     return [
       {
-        name: 'system.refresh',
+        name: 'system_refresh',
         description: 'Refresh all caches to fetch fresh data from Things3',
         inputSchema: {
           type: 'object',
@@ -66,7 +66,7 @@ export class SystemTools {
         }
       },
       {
-        name: 'system.launch',
+        name: 'system_launch',
         description: 'Launch Things3 application if not already running',
         inputSchema: {
           type: 'object',

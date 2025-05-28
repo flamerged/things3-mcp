@@ -154,7 +154,7 @@ export class ProjectTools extends CacheAwareBase {
   static getTools(projectTools: ProjectTools): Tool[] {
     return [
       {
-        name: 'projects.list',
+        name: 'projects_list',
         description: 'List all projects in Things3',
         inputSchema: {
           type: 'object',
@@ -172,7 +172,7 @@ export class ProjectTools extends CacheAwareBase {
         handler: async (params: unknown) => projectTools.listProjects(params as ProjectsListParams)
       },
       {
-        name: 'projects.get',
+        name: 'projects_get',
         description: 'Get detailed information about a specific project',
         inputSchema: {
           type: 'object',
@@ -187,7 +187,7 @@ export class ProjectTools extends CacheAwareBase {
         handler: async (params: unknown) => projectTools.getProject(params as ProjectsGetParams)
       },
       {
-        name: 'projects.create',
+        name: 'projects_create',
         description: 'Create a new project in Things3',
         inputSchema: {
           type: 'object',
@@ -228,7 +228,7 @@ export class ProjectTools extends CacheAwareBase {
         handler: async (params: unknown) => projectTools.createProject(params as ProjectsCreateParams)
       },
       {
-        name: 'projects.update',
+        name: 'projects_update',
         description: 'Update an existing project',
         inputSchema: {
           type: 'object',
@@ -268,7 +268,7 @@ export class ProjectTools extends CacheAwareBase {
         handler: async (params: unknown) => projectTools.updateProject(params as ProjectsUpdateParams)
       },
       {
-        name: 'projects.complete',
+        name: 'projects_complete',
         description: 'Mark a project as completed',
         inputSchema: {
           type: 'object',

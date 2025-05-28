@@ -65,7 +65,7 @@ export class BulkTools {
   getTools(): Tool[] {
     return [
       {
-        name: 'bulk.move',
+        name: 'bulk_move',
         description: 'Move multiple TODOs to a project or area',
         inputSchema: {
           type: 'object',
@@ -97,7 +97,7 @@ export class BulkTools {
         }
       },
       {
-        name: 'bulk.updateDates',
+        name: 'bulk_updateDates',
         description: 'Update dates for multiple TODOs at once',
         inputSchema: {
           type: 'object',

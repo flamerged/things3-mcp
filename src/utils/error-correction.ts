@@ -9,6 +9,7 @@ import {
 } from '../types/corrections.js';
 import { TodosCreateParams, TodosUpdateParams } from '../types/tools.js';
 import { cleanTagName } from './tag-validator.js';
+import { createLogger } from './logger.js';
 
 /**
  * Corrects date conflicts where deadline is before when date
@@ -184,6 +185,7 @@ export class ErrorCorrector {
   private projectCorrector = new InvalidProjectReferenceCorrector();
   private areaCorrector = new InvalidAreaReferenceCorrector();
   private tagCorrector = new TagNameCleaner();
+  private logger = createLogger('error-correction');
 
   /**
    * Update valid project IDs for reference validation
@@ -264,12 +266,12 @@ export class ErrorCorrector {
   logCorrections(report: CorrectionReport): void {
     if (!report.hasCorrections) return;
 
-    console.log('Applied corrections:');
+    this.logger.info('Applied corrections:');
     for (const correction of report.corrections) {
-      console.log(`- ${correction.type}: ${correction.reason}`);
-      console.log(`  Field: ${correction.field}`);
-      console.log(`  Original: ${JSON.stringify(correction.originalValue)}`);
-      console.log(`  Corrected: ${JSON.stringify(correction.correctedValue)}`);
+      this.logger.info(`- ${correction.type}: ${correction.reason}`);
+      this.logger.debug(`  Field: ${correction.field}`);
+      this.logger.debug(`  Original: ${JSON.stringify(correction.originalValue)}`);
+      this.logger.debug(`  Corrected: ${JSON.stringify(correction.correctedValue)}`);
     }
   }
 }

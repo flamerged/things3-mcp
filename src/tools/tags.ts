@@ -162,7 +162,7 @@ export class TagTools extends CacheAwareBase {
   static getTools(tagTools: TagTools): Tool[] {
     return [
       {
-        name: 'tags.list',
+        name: 'tags_list',
         description: 'List all tags in Things3 with hierarchy information',
         inputSchema: {
           type: 'object',
@@ -171,7 +171,7 @@ export class TagTools extends CacheAwareBase {
         handler: async () => tagTools.listTags()
       },
       {
-        name: 'tags.create',
+        name: 'tags_create',
         description: 'Create a new tag in Things3',
         inputSchema: {
           type: 'object',
@@ -190,7 +190,7 @@ export class TagTools extends CacheAwareBase {
         handler: async (params: unknown) => tagTools.createTag(params as TagsCreateParams)
       },
       {
-        name: 'tags.add',
+        name: 'tags_add',
         description: 'Add tags to TODOs or projects',
         inputSchema: {
           type: 'object',
@@ -211,7 +211,7 @@ export class TagTools extends CacheAwareBase {
         handler: async (params: unknown) => tagTools.addTags(params as TagsAddParams)
       },
       {
-        name: 'tags.remove',
+        name: 'tags_remove',
         description: 'Remove tags from TODOs or projects',
         inputSchema: {
           type: 'object',
