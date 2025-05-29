@@ -25,7 +25,9 @@
     "things3",
     "macos",
     "task-management",
-    "applescript"
+    "applescript",
+    "model-context-protocol",
+    "productivity"
   ],
   "author": "",
   "license": "MIT",
