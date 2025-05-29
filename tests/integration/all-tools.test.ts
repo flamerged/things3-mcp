@@ -4,21 +4,20 @@
 import { describe, it, beforeAll, afterAll, expect, beforeEach } from '@jest/globals';
 import { Things3Server } from '../../src/server';
 import { AppleScriptBridge } from '../../src/utils/applescript';
+import { TestResourceTracker, generateTestId } from './test-helpers.js';
 
 describe('All Tools Integration Tests', () => {
   let server: Things3Server;
   let bridge: AppleScriptBridge;
-  let testTodoIds: string[] = [];
-  let testProjectIds: string[] = [];
-  let testAreaIds: string[] = [];
-  let testTagIds: string[] = [];
+  let tracker: TestResourceTracker;
   
   // Test data for reuse
-  const TEST_PREFIX = `TEST_${Date.now()}_`;
+  const TEST_PREFIX = generateTestId();
 
   beforeAll(async () => {
     server = new Things3Server();
     bridge = new AppleScriptBridge();
+    tracker = new TestResourceTracker(server);
     
     // Ensure Things3 is running
     try {
@@ -31,28 +30,12 @@ describe('All Tools Integration Tests', () => {
   });
 
   afterAll(async () => {
-    // Clean up test data
+    // Clean up all test resources
     console.log('Cleaning up test data...');
+    const stats = tracker.getStats();
+    console.log(`Cleaning up: ${stats.todos} TODOs, ${stats.projects} projects, ${stats.areas} areas, ${stats.tags} tags`);
     
-    // Delete test TODOs
-    if (testTodoIds.length > 0) {
-      try {
-        await server.todosTools.deleteTodos({ ids: testTodoIds });
-      } catch (error) {
-        console.warn('Failed to clean up test TODOs:', error);
-      }
-    }
-    
-    // Complete test projects (can't delete in Things3)
-    for (const projectId of testProjectIds) {
-      try {
-        await server.projectTools.completeProject({ id: projectId });
-      } catch (error) {
-        console.warn('Failed to complete test project:', error);
-      }
-    }
-    
-    // Note: We can't delete tags in Things3, but they'll be identifiable by the TEST_ prefix
+    await tracker.cleanup();
   });
 
   describe('System Tools', () => {
@@ -69,7 +52,6 @@ describe('All Tools Integration Tests', () => {
   });
 
   describe('Area Management', () => {
-    let testAreaId: string | undefined;
 
     it('should list areas', async () => {
       const result = await server.areaTools.listAreas({});
@@ -92,8 +74,7 @@ describe('All Tools Integration Tests', () => {
       expect(result.success).toBe(true);
       expect(result.id).toBeTruthy();
       
-      testAreaId = result.id;
-      testAreaIds.push(testAreaId!);
+      tracker.trackArea(TEST_PREFIX + 'TestArea');
     });
   });
 
@@ -123,7 +104,7 @@ describe('All Tools Integration Tests', () => {
       expect(result.id).toBeTruthy();
       
       testProjectId = result.id;
-      testProjectIds.push(testProjectId!);
+      tracker.trackProject(testProjectId!);
     });
 
     it('should get project details', async () => {
@@ -162,7 +143,6 @@ describe('All Tools Integration Tests', () => {
   });
 
   describe('Tag Management', () => {
-    let testTagId: string | undefined;
 
     it('should list tags', async () => {
       const result = await server.tagTools.listTags();
@@ -183,8 +163,7 @@ describe('All Tools Integration Tests', () => {
       expect(result.success).toBe(true);
       expect(result.id).toBeTruthy();
       
-      testTagId = result.id;
-      testTagIds.push(testTagId!);
+      tracker.trackTag(TEST_PREFIX + 'TestTag');
     });
 
     it('should add and remove tags from TODOs', async () => {
@@ -200,7 +179,7 @@ describe('All Tools Integration Tests', () => {
         title: 'TODO for tag test'
       });
       const todoId = todoResult.id!;
-      testTodoIds.push(todoId);
+      tracker.trackTodo(todoId);
       
       // Add tags using our test tags
       const addResult = await server.tagTools.addTags({
@@ -236,7 +215,7 @@ describe('All Tools Integration Tests', () => {
       ]);
       
       bulkTodoIds = todos.map(t => t.id!);
-      testTodoIds.push(...bulkTodoIds);
+      tracker.trackTodos(bulkTodoIds);
     });
 
     it('should bulk move TODOs to a project', async () => {
@@ -245,7 +224,7 @@ describe('All Tools Integration Tests', () => {
         name: `${TEST_PREFIX}Bulk Move Project`
       });
       const projectId = projectResult.id!;
-      testProjectIds.push(projectId);
+      tracker.trackProject(projectId);
       
       const result = await server.bulkTools.move({
         todoIds: bulkTodoIds,
@@ -363,7 +342,7 @@ describe('All Tools Integration Tests', () => {
       expect(result.correctionsMade?.some(correction => correction.includes('Deadline cannot be before'))).toBe(true);
       
       if (result.id) {
-        testTodoIds.push(result.id);
+        tracker.trackTodo(result.id);
       }
     });
 
@@ -377,7 +356,7 @@ describe('All Tools Integration Tests', () => {
       expect(result.correctionsMade).toBeTruthy();
       
       if (result.id) {
-        testTodoIds.push(result.id);
+        tracker.trackTodo(result.id);
         
         const todo = await server.todosTools.getTodo({ id: result.id });
         expect(todo!.title).toBeTruthy();
@@ -408,7 +387,7 @@ describe('All Tools Integration Tests', () => {
       });
       expect(createResult.success).toBe(true);
       expect(createResult.id).toBeTruthy();
-      testProjectIds.push(createResult.id!);
+      tracker.trackProject(createResult.id!);
       
       // Wait for Things3 to process the new project
       await new Promise(resolve => setTimeout(resolve, 1000));

@@ -4,15 +4,17 @@
 import { describe, it, beforeAll, afterAll, expect } from '@jest/globals';
 import { Things3Server } from '../../src/server';
 import { AppleScriptBridge } from '../../src/utils/applescript';
+import { TestResourceTracker } from './test-helpers.js';
 
 describe('Things3 Integration Tests', () => {
   let server: Things3Server;
   let bridge: AppleScriptBridge;
-  let testTodoIds: string[] = [];
+  let tracker: TestResourceTracker;
 
   beforeAll(async () => {
     server = new Things3Server();
     bridge = new AppleScriptBridge();
+    tracker = new TestResourceTracker(server);
     
     // Ensure Things3 is running
     try {
@@ -25,14 +27,10 @@ describe('Things3 Integration Tests', () => {
   });
 
   afterAll(async () => {
-    // Clean up any test TODOs that weren't deleted
-    if (testTodoIds.length > 0) {
-      try {
-        await server.todosTools.deleteTodos({ ids: testTodoIds });
-      } catch (error) {
-        console.warn('Failed to clean up test TODOs:', (error as Error).message);
-      }
-    }
+    // Clean up all test resources
+    const stats = tracker.getStats();
+    console.log(`Things3 integration tests cleanup: ${stats.todos} TODOs`);
+    await tracker.cleanup();
   });
 
   describe('Basic AppleScript Communication', () => {
@@ -67,7 +65,7 @@ describe('Things3 Integration Tests', () => {
       expect(createResult.id).toBeTruthy();
       
       const todoId = createResult.id!;
-      testTodoIds.push(todoId);
+      tracker.trackTodo(todoId);
 
       // 2. Get the TODO details
       const todo = await server.todosTools.getTodo({ id: todoId });
@@ -117,8 +115,7 @@ describe('Things3 Integration Tests', () => {
       // 10. Verify deletion was attempted successfully
       // Note: Things3 deletion behavior may vary based on app state
       
-      // Remove from cleanup list since it's deleted
-      testTodoIds = testTodoIds.filter(id => id !== todoId);
+      // Todo is deleted, no need to track anymore
     });
   });
 
@@ -131,7 +128,7 @@ describe('Things3 Integration Tests', () => {
       });
       
       const todoId = result.id!;
-      testTodoIds.push(todoId);
+      tracker.trackTodo(todoId);
 
       // Verify tags (may need to use existing tags or create them first)
       const todo = await server.todosTools.getTodo({ id: todoId });

@@ -3,26 +3,24 @@
 
 import { Things3Server } from '../../src/server.js';
 import { TodosTools } from '../../src/tools/todos.js';
+import { TestResourceTracker } from './test-helpers.js';
 
 describe('Checklist Integration Tests', () => {
   let server: Things3Server;
   let todosTools: TodosTools;
-  const createdTodoIds: string[] = [];
+  let tracker: TestResourceTracker;
 
   beforeAll(() => {
     server = new Things3Server();
     todosTools = server.todosTools;
+    tracker = new TestResourceTracker(server);
   });
 
   afterAll(async () => {
-    // Clean up any created TODOs
-    for (const id of createdTodoIds) {
-      try {
-        await todosTools.deleteTodos({ ids: [id] });
-      } catch (error) {
-        // Ignore errors during cleanup
-      }
-    }
+    // Clean up all test resources
+    const stats = tracker.getStats();
+    console.log(`Checklist tests cleanup: ${stats.todos} TODOs, ${stats.projects} projects`);
+    await tracker.cleanup();
   });
 
   test('should create a TODO with checklist items using URL scheme', async () => {
@@ -43,7 +41,7 @@ describe('Checklist Integration Tests', () => {
     expect(result.id).toBeDefined();
     
     if (result.id) {
-      createdTodoIds.push(result.id);
+      tracker.trackTodo(result.id);
       
       // Verify the TODO exists by searching for it
       const todos = await todosTools.listTodos({
@@ -74,7 +72,7 @@ describe('Checklist Integration Tests', () => {
     expect(result.id).toBeDefined();
     
     if (result.id) {
-      createdTodoIds.push(result.id);
+      tracker.trackTodo(result.id);
     }
   });
 
@@ -89,6 +87,7 @@ describe('Checklist Integration Tests', () => {
         notes: 'Project for integration testing'
       });
       project = { id: projectResult.id!, name: 'Integration Test Project', completed: false };
+      tracker.trackProject(projectResult.id!);
     }
 
     const todoData = {
@@ -106,12 +105,9 @@ describe('Checklist Integration Tests', () => {
     expect(result.id).toBeDefined();
     
     if (result.id) {
-      createdTodoIds.push(result.id);
+      tracker.trackTodo(result.id);
     }
 
-    // Clean up project
-    if (project?.id) {
-      await server.projectTools.completeProject({ id: project.id });
-    }
+    // Project cleanup is handled by tracker
   });
 });
