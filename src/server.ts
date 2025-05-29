@@ -4,6 +4,15 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { 
+  TodosListParams, TodosGetParams, TodosCreateParams, TodosUpdateParams, 
+  TodosCompleteParams, TodosUncompleteParams, TodosDeleteParams,
+  ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams,
+  AreasListParams, AreasCreateParams,
+  TagsCreateParams, TagsAddParams, TagsRemoveParams,
+  BulkMoveParams, BulkUpdateDatesParams,
+  LogbookSearchParams
+} from './types/tools.js';
 import { TodosTools } from './tools/todos.js';
 import { ProjectTools } from './tools/projects.js';
 import { AreaTools } from './tools/areas.js';
@@ -89,57 +98,57 @@ export class Things3Server {
       switch (name) {
         // TODO tools
         case 'todos_list':
-          return { toolResult: await this.todosTools.listTodos(args as any) };
+          return { toolResult: await this.todosTools.listTodos(args as unknown as TodosListParams) };
         case 'todos_get':
-          return { toolResult: await this.todosTools.getTodo(args as any) };
+          return { toolResult: await this.todosTools.getTodo(args as unknown as TodosGetParams) };
         case 'todos_create':
-          return { toolResult: await this.todosTools.createTodo(args as any) };
+          return { toolResult: await this.todosTools.createTodo(args as unknown as TodosCreateParams) };
         case 'todos_update':
-          return { toolResult: await this.todosTools.updateTodo(args as any) };
+          return { toolResult: await this.todosTools.updateTodo(args as unknown as TodosUpdateParams) };
         case 'todos_complete':
-          return { toolResult: await this.todosTools.completeTodos(args as any) };
+          return { toolResult: await this.todosTools.completeTodos(args as unknown as TodosCompleteParams) };
         case 'todos_uncomplete':
-          return { toolResult: await this.todosTools.uncompleteTodos(args as any) };
+          return { toolResult: await this.todosTools.uncompleteTodos(args as unknown as TodosUncompleteParams) };
         case 'todos_delete':
-          return { toolResult: await this.todosTools.deleteTodos(args as any) };
+          return { toolResult: await this.todosTools.deleteTodos(args as unknown as TodosDeleteParams) };
         
         // Project tools
         case 'projects_list':
-          return { toolResult: await this.projectTools.listProjects(args as any) };
+          return { toolResult: await this.projectTools.listProjects(args as unknown as ProjectsListParams) };
         case 'projects_get':
-          return { toolResult: await this.projectTools.getProject(args as any) };
+          return { toolResult: await this.projectTools.getProject(args as unknown as ProjectsGetParams) };
         case 'projects_create':
-          return { toolResult: await this.projectTools.createProject(args as any) };
+          return { toolResult: await this.projectTools.createProject(args as unknown as ProjectsCreateParams) };
         case 'projects_update':
-          return { toolResult: await this.projectTools.updateProject(args as any) };
+          return { toolResult: await this.projectTools.updateProject(args as unknown as ProjectsUpdateParams) };
         case 'projects_complete':
-          return { toolResult: await this.projectTools.completeProject(args as any) };
+          return { toolResult: await this.projectTools.completeProject(args as unknown as ProjectsCompleteParams) };
         
         // Area tools
         case 'areas_list':
-          return { toolResult: await this.areaTools.listAreas(args as any) };
+          return { toolResult: await this.areaTools.listAreas(args as unknown as AreasListParams) };
         case 'areas_create':
-          return { toolResult: await this.areaTools.createArea(args as any) };
+          return { toolResult: await this.areaTools.createArea(args as unknown as AreasCreateParams) };
         
         // Tag tools
         case 'tags_list':
           return { toolResult: await this.tagTools.listTags() };
         case 'tags_create':
-          return { toolResult: await this.tagTools.createTag(args as any) };
+          return { toolResult: await this.tagTools.createTag(args as unknown as TagsCreateParams) };
         case 'tags_add':
-          return { toolResult: await this.tagTools.addTags(args as any) };
+          return { toolResult: await this.tagTools.addTags(args as unknown as TagsAddParams) };
         case 'tags_remove':
-          return { toolResult: await this.tagTools.removeTags(args as any) };
+          return { toolResult: await this.tagTools.removeTags(args as unknown as TagsRemoveParams) };
         
         // Bulk tools
         case 'bulk_move':
-          return { toolResult: await this.bulkTools.move(args as any) };
+          return { toolResult: await this.bulkTools.move(args as unknown as BulkMoveParams) };
         case 'bulk_updateDates':
-          return { toolResult: await this.bulkTools.updateDates(args as any) };
+          return { toolResult: await this.bulkTools.updateDates(args as unknown as BulkUpdateDatesParams) };
         
         // Logbook tools
         case 'logbook_search':
-          return { toolResult: await this.logbookTools.search(args as any) };
+          return { toolResult: await this.logbookTools.search(args as unknown as LogbookSearchParams) };
         
         // System tools
         case 'system_refresh':

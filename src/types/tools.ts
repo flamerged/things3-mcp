@@ -177,6 +177,9 @@ export interface ProjectsCreateParams {
   notes?: string;
   areaId?: string;
   headings?: string[];
+  whenDate?: string;
+  deadline?: string;
+  tags?: string[];
 }
 
 /**
@@ -194,6 +197,9 @@ export interface ProjectsUpdateParams {
   name?: string;
   notes?: string;
   areaId?: string | null;
+  whenDate?: string | null;
+  deadline?: string | null;
+  tags?: string[];
 }
 
 /**

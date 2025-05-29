@@ -44,13 +44,13 @@ export class LogbookTools {
       const parsedResult = JSON.parse(result);
       
       // Convert the results to TodoItem format
-      const items = parsedResult.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        notes: item.notes,
+      const items = parsedResult.map((item: Record<string, unknown>) => ({
+        id: item['id'],
+        title: item['title'],
+        notes: item['notes'],
         completed: true,
-        completionDate: item.completionDate,
-        projectName: item.projectName
+        completionDate: item['completionDate'],
+        projectName: item['projectName']
       }));
 
       return { items };

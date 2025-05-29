@@ -17,7 +17,7 @@ interface LogEntry {
   level: string;
   message: string;
   context?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: {
     message: string;
     stack?: string;
@@ -83,33 +83,37 @@ export class Logger {
   /**
    * Log debug message
    */
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: Record<string, unknown>): void {
     this.log(LogLevel.DEBUG, message, data);
   }
 
   /**
    * Log info message
    */
-  info(message: string, data?: any): void {
+  info(message: string, data?: Record<string, unknown>): void {
     this.log(LogLevel.INFO, message, data);
   }
 
   /**
    * Log warning message
    */
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: Record<string, unknown>): void {
     this.log(LogLevel.WARN, message, data);
   }
 
   /**
    * Log error message
    */
-  error(message: string, error?: Error | any, data?: any): void {
-    const errorData = error instanceof Error ? {
-      message: error.message,
-      stack: error.stack,
-      code: (error as any).code
-    } : error;
+  error(message: string, error?: Error | string, data?: Record<string, unknown>): void {
+    let errorData: { message: string; stack?: string; code?: string } | undefined;
+    if (error instanceof Error) {
+      errorData = { message: error.message };
+      if (error.stack) errorData.stack = error.stack;
+      const code = (error as Error & { code?: string }).code;
+      if (code) errorData.code = code;
+    } else if (error) {
+      errorData = { message: String(error) };
+    }
     
     this.log(LogLevel.ERROR, message, data, errorData);
   }
@@ -125,7 +129,7 @@ export class Logger {
   /**
    * Core logging method
    */
-  private log(level: LogLevel, message: string, data?: any, error?: any): void {
+  private log(level: LogLevel, message: string, data?: Record<string, unknown>, error?: { message: string; stack?: string; code?: string }): void {
     if (!this.isLevelEnabled(level)) {
       return;
     }
@@ -232,14 +236,14 @@ export class RequestLogger {
   /**
    * Log incoming request
    */
-  logRequest(method: string, params: any): void {
+  logRequest(method: string, params: Record<string, unknown>): void {
     this.logger.info(`Request: ${method}`, { params });
   }
   
   /**
    * Log successful response
    */
-  logResponse(method: string, result: any, duration: number): void {
+  logResponse(method: string, result: unknown, duration: number): void {
     this.logger.info(`Response: ${method}`, { 
       duration: `${duration}ms`,
       result: this.truncateResult(result)
@@ -258,7 +262,7 @@ export class RequestLogger {
   /**
    * Truncate large results for logging
    */
-  private truncateResult(result: any): any {
+  private truncateResult(result: unknown): unknown {
     if (Array.isArray(result) && result.length > 10) {
       return {
         _truncated: true,
@@ -288,7 +292,7 @@ export class PerformanceLogger {
   /**
    * Log operation timing
    */
-  logTiming(operation: string, duration: number, metadata?: any): void {
+  logTiming(operation: string, duration: number, metadata?: Record<string, unknown>): void {
     const level = duration > 5000 ? 'warn' : 'debug';
     
     this.logger[level](`Operation completed: ${operation}`, {

@@ -318,10 +318,10 @@ export class CircuitBreaker {
  * Decorator for adding retry logic to class methods
  */
 export function Retry(options?: RetryOptions) {
-  return function (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       return withRetry(
         () => originalMethod.apply(this, args),
         options

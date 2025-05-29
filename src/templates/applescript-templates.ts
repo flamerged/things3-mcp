@@ -428,7 +428,7 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
 /**
  * Generate AppleScript to list areas
  */
-export function listAreas(_includeHidden?: boolean): string {
+export function listAreas(): string {
   let script = 'tell application "Things3"\n';
   script += '  set areaList to areas\n';
   script += '  set results to {}\n';

@@ -77,17 +77,17 @@ export class ProjectTools extends CacheAwareBase {
    */
   async createProject(params: ProjectsCreateParams): Promise<ProjectsCreateResult> {
     // Convert dates to AppleScript format if provided
-    const whenDate = (params as any).whenDate ? 
-      isoToAppleScriptDate((params as any).whenDate) : undefined;
-    const deadline = (params as any).deadline ? 
-      isoToAppleScriptDate((params as any).deadline) : undefined;
+    const whenDate = params.whenDate ? 
+      isoToAppleScriptDate(params.whenDate) : undefined;
+    const deadline = params.deadline ? 
+      isoToAppleScriptDate(params.deadline) : undefined;
     
     const script = createProject(
       params.name,
       params.notes,
       whenDate,
       deadline,
-      (params as any).tags,
+      params.tags,
       params.areaId,
       params.headings
     );
@@ -104,22 +104,22 @@ export class ProjectTools extends CacheAwareBase {
    * Update an existing project
    */
   async updateProject(params: ProjectsUpdateParams): Promise<{ success: boolean }> {
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     
     // Only include properties that are being updated
-    if (params.name !== undefined) updates.name = params.name;
-    if (params.notes !== undefined) updates.notes = params.notes;
-    if ((params as any).tags !== undefined) updates.tags = (params as any).tags;
-    if (params.areaId !== undefined) updates.areaId = params.areaId;
+    if (params.name !== undefined) updates['name'] = params.name;
+    if (params.notes !== undefined) updates['notes'] = params.notes;
+    if (params.tags !== undefined) updates['tags'] = params.tags;
+    if (params.areaId !== undefined) updates['areaId'] = params.areaId;
     
     // Convert dates if provided
-    if ((params as any).whenDate !== undefined) {
-      updates.whenDate = (params as any).whenDate ? 
-        isoToAppleScriptDate((params as any).whenDate) : null;
+    if (params.whenDate !== undefined) {
+      updates['whenDate'] = params.whenDate ? 
+        isoToAppleScriptDate(params.whenDate) : null;
     }
-    if ((params as any).deadline !== undefined) {
-      updates.deadline = (params as any).deadline ? 
-        isoToAppleScriptDate((params as any).deadline) : null;
+    if (params.deadline !== undefined) {
+      updates['deadline'] = params.deadline ? 
+        isoToAppleScriptDate(params.deadline) : null;
     }
     
     const script = updateProject(params.id, updates);

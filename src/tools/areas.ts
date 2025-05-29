@@ -35,7 +35,7 @@ export class AreaTools extends CacheAwareBase {
     }
 
     // Generate and execute AppleScript
-    const script = listAreas(params.includeHidden);
+    const script = listAreas();
     const result = await this.bridge.execute(script);
     
     // Parse the JSON response

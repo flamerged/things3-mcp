@@ -146,7 +146,7 @@ export class TodosTools {
       
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoCreateParams(params);
-      const correctedParams = correctionReport.correctedData as TodosCreateParams;
+      const correctedParams = correctionReport.correctedData;
       
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
@@ -255,22 +255,22 @@ export class TodosTools {
       
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoUpdateParams(params);
-      const correctedParams = correctionReport.correctedData as TodosUpdateParams;
+      const correctedParams = correctionReport.correctedData;
       
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
         this.errorCorrector.logCorrections(correctionReport);
       }
       
-      const updates: any = {};
+      const updates: Record<string, unknown> = {};
       
-      if (correctedParams.title !== undefined) updates.title = correctedParams.title;
-      if (correctedParams.notes !== undefined) updates.notes = correctedParams.notes;
-      if (correctedParams.whenDate !== undefined) updates.whenDate = correctedParams.whenDate;
-      if (correctedParams.deadline !== undefined) updates.deadline = correctedParams.deadline;
-      if (correctedParams.tags !== undefined) updates.tags = correctedParams.tags;
-      if (correctedParams.projectId !== undefined) updates.projectId = correctedParams.projectId;
-      if (correctedParams.areaId !== undefined) updates.areaId = correctedParams.areaId;
+      if (correctedParams.title !== undefined) updates['title'] = correctedParams.title;
+      if (correctedParams.notes !== undefined) updates['notes'] = correctedParams.notes;
+      if (correctedParams.whenDate !== undefined) updates['whenDate'] = correctedParams.whenDate;
+      if (correctedParams.deadline !== undefined) updates['deadline'] = correctedParams.deadline;
+      if (correctedParams.tags !== undefined) updates['tags'] = correctedParams.tags;
+      if (correctedParams.projectId !== undefined) updates['projectId'] = correctedParams.projectId;
+      if (correctedParams.areaId !== undefined) updates['areaId'] = correctedParams.areaId;
       
       const script = templates.updateTodo(correctedParams.id, updates);
       

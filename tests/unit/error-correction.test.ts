@@ -109,7 +109,7 @@ describe('ErrorCorrector', () => {
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.INVALID_PROJECT_REFERENCE);
-      expect(report.correctedData.projectId).toBeUndefined();
+      expect(report.correctedData.projectId).toBeNull();
     });
 
     it('should keep valid project reference', () => {
@@ -141,7 +141,7 @@ describe('ErrorCorrector', () => {
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.INVALID_AREA_REFERENCE);
-      expect(report.correctedData.areaId).toBeUndefined();
+      expect(report.correctedData.areaId).toBeNull();
     });
 
     it('should keep valid area reference', () => {
@@ -217,7 +217,7 @@ describe('ErrorCorrector', () => {
       expect(report.correctedData.title).toBe('Important task description');
       expect(report.correctedData.whenDate).toBe('2025-01-10T10:00:00Z');
       expect(report.correctedData.deadline).toBe('2025-01-15T10:00:00Z');
-      expect(report.correctedData.projectId).toBeUndefined();
+      expect(report.correctedData.projectId).toBeNull();
       expect(report.correctedData.tags).toEqual(['tag1', 'tag2']);
     });
   });

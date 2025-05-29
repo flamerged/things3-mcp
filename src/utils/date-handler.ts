@@ -147,12 +147,13 @@ export function parseRelativeDate(relativeDate: string): string {
       now.setMonth(now.getMonth() + 1);
       return now.toISOString();
       
-    default:
+    default: {
       // Try to parse as a regular date
       const parsed = new Date(relativeDate);
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString();
       }
       throw new Error(`Cannot parse relative date: ${relativeDate}`);
+    }
   }
 }

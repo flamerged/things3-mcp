@@ -18,24 +18,24 @@ export enum CorrectionType {
 export interface CorrectionResult {
   type: CorrectionType;
   field: string;
-  originalValue: any;
-  correctedValue: any;
+  originalValue: unknown;
+  correctedValue: unknown;
   reason: string;
 }
 
 /**
  * Complete correction report for an operation
  */
-export interface CorrectionReport {
+export interface CorrectionReport<T = Record<string, unknown>> {
   hasCorrections: boolean;
   corrections: CorrectionResult[];
-  correctedData: any;
+  correctedData: T;
 }
 
 /**
  * Interface for correction strategies
  */
-export interface CorrectionStrategy<T = any> {
+export interface CorrectionStrategy<T = Record<string, unknown>> {
   shouldCorrect(data: T): boolean;
   correct(data: T): CorrectionResult | null;
 }

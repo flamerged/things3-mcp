@@ -244,12 +244,13 @@ export function updateConfig(updates: Partial<Config>): void {
   
   // Deep merge updates
   configInstance = deepMerge(configInstance, updates) as Config;
-  validateConfig(configInstance);
+  validateConfig(configInstance!);
 }
 
 /**
  * Deep merge objects
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepMerge(target: any, source: any): any {
   const result = { ...target };
   

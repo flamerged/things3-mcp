@@ -146,10 +146,8 @@ export class AppleScriptPool extends EventEmitter {
       const { process } = pooledProcess;
       let output = '';
       let error = '';
-      let timeout: NodeJS.Timeout;
-      
       const cleanup = () => {
-        clearTimeout(timeout);
+        clearTimeout(timeoutRef);
         process.stdout?.removeListener('data', onData);
         process.stderr?.removeListener('data', onError);
       };
@@ -163,7 +161,7 @@ export class AppleScriptPool extends EventEmitter {
       };
       
       // Set up timeout
-      timeout = setTimeout(() => {
+      const timeoutRef = setTimeout(() => {
         cleanup();
         reject(new Error('AppleScript execution timeout'));
       }, 30000);
