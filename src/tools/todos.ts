@@ -144,6 +144,9 @@ export class TodosTools {
     try {
       await this.bridge.ensureThings3Running();
       
+      // TODO: Temporarily skip refresh to avoid performance issues
+      // await this.errorCorrector.refreshValidIds(this.bridge);
+      
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoCreateParams(params);
       const correctedParams = correctionReport.correctedData;
@@ -252,6 +255,9 @@ export class TodosTools {
   async updateTodo(params: TodosUpdateParams): Promise<TodosUpdateResult> {
     try {
       await this.bridge.ensureThings3Running();
+      
+      // TODO: Temporarily skip refresh to avoid performance issues
+      // await this.errorCorrector.refreshValidIds(this.bridge);
       
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoUpdateParams(params);

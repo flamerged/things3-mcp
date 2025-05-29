@@ -10,6 +10,7 @@ import {
 import { TodosCreateParams, TodosUpdateParams } from '../types/tools.js';
 import { cleanTagName } from './tag-validator.js';
 import { createLogger } from './logger.js';
+import type { AppleScriptBridge } from './applescript.js';
 
 // Interfaces for correction strategies
 interface DateParams {
@@ -120,6 +121,8 @@ class InvalidProjectReferenceCorrector implements CorrectionStrategy<ProjectPara
 
   shouldCorrect(data: ProjectParams): boolean {
     if (!data.projectId) return false;
+    // Temporarily disable project validation if no valid IDs are cached
+    if (this.validProjectIds.size === 0) return false;
     return !this.validProjectIds.has(data.projectId);
   }
 
@@ -226,6 +229,39 @@ export class ErrorCorrector {
    */
   setValidAreaIds(ids: string[]): void {
     this.areaCorrector.setValidAreaIds(ids);
+  }
+
+  /**
+   * Refresh valid project and area IDs by fetching current data
+   */
+  async refreshValidIds(bridge?: AppleScriptBridge): Promise<void> {
+    try {
+      // Use provided bridge or import and create new one
+      let scriptBridge = bridge;
+      if (!scriptBridge) {
+        const { AppleScriptBridge } = await import('../utils/applescript.js');
+        scriptBridge = new AppleScriptBridge();
+      }
+      
+      const templates = await import('../templates/applescript-templates.js');
+      
+      // Get current projects
+      const projectScript = templates.listProjects();
+      const projectResponse = await scriptBridge.execute(projectScript);
+      const projects = JSON.parse(projectResponse);
+      const projectIds = projects.map((p: { id: string }) => p.id);
+      this.setValidProjectIds(projectIds);
+      
+      // Get current areas
+      const areaScript = templates.listAreas();
+      const areaResponse = await scriptBridge.execute(areaScript);
+      const areas = JSON.parse(areaResponse);
+      const areaIds = areas.map((a: { id: string }) => a.id);
+      this.setValidAreaIds(areaIds);
+      
+    } catch (error) {
+      this.logger.warn('Failed to refresh valid IDs:', { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   /**

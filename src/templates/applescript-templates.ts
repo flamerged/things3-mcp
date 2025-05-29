@@ -201,11 +201,11 @@ export function createTodo(
     script += `  set tag names of newTodo to "${tagList}"\n`;
   }
   
-  // Move to project or area if specified
+  // Assign to project or area if specified
   if (projectId) {
-    script += `  move newTodo to project id "${bridge.escapeString(projectId)}"\n`;
+    script += `  set project of newTodo to project id "${bridge.escapeString(projectId)}"\n`;
   } else if (areaId) {
-    script += `  move newTodo to area id "${bridge.escapeString(areaId)}"\n`;
+    script += `  set area of newTodo to area id "${bridge.escapeString(areaId)}"\n`;
   }
   
   script += '  return id of newTodo\n';
@@ -270,18 +270,20 @@ export function updateTodo(
     script += `  set tag names of t to "${tagList}"\n`;
   }
   
-  // Move to new project/area
+  // Assign to new project/area
   if (updates.projectId !== undefined) {
     if (updates.projectId === null) {
-      script += '  move t to list "Inbox"\n';
+      script += '  set project of t to missing value\n';
+      script += '  set area of t to missing value\n';
     } else {
-      script += `  move t to project id "${bridge.escapeString(updates.projectId)}"\n`;
+      script += `  set project of t to project id "${bridge.escapeString(updates.projectId)}"\n`;
     }
   } else if (updates.areaId !== undefined) {
     if (updates.areaId === null) {
-      script += '  move t to list "Inbox"\n';
+      script += '  set project of t to missing value\n';
+      script += '  set area of t to missing value\n';
     } else {
-      script += `  move t to area id "${bridge.escapeString(updates.areaId)}"\n`;
+      script += `  set area of t to area id "${bridge.escapeString(updates.areaId)}"\n`;
     }
   }
   
