@@ -1,7 +1,10 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Run unit tests first
+# Run linting first to catch code quality issues
+npm run lint
+
+# Run unit tests
 npm run test:unit
 
 # Run integration tests if Things3 is available
