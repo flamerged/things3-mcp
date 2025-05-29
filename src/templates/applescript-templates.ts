@@ -100,68 +100,61 @@ export function getTodoById(id: string): string {
   const escapedId = bridge.escapeString(id);
   
   return `
-on joinList(lst, delim)
-  set AppleScript's text item delimiters to delim
-  set txt to lst as text
-  set AppleScript's text item delimiters to ""
-  return txt
-end joinList
+use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
 
 tell application "Things3"
   try
     set t to to do id "${escapedId}"
     
-    set todoRecord to "{"
-    set todoRecord to todoRecord & "\\"id\\":\\"" & (id of t) & "\\","
-    set todoRecord to todoRecord & "\\"title\\":\\"" & (name of t) & "\\","
-    
-    -- Handle notes
-    if notes of t is missing value then
-      set todoRecord to todoRecord & "\\"notes\\":null,"
-    else
-      set todoRecord to todoRecord & "\\"notes\\":\\"" & (notes of t) & "\\","
-    end if
-    
-    set todoRecord to todoRecord & "\\"completed\\":" & (status of t is completed) & ","
-    
-    -- Handle when date (activation date in Things3)
-    if activation date of t is missing value then
-      set todoRecord to todoRecord & "\\"whenDate\\":null,"
-    else
-      set todoRecord to todoRecord & "\\"whenDate\\":\\"" & (activation date of t as string) & "\\","
-    end if
-    
-    -- Handle deadline
-    if due date of t is missing value then
-      set todoRecord to todoRecord & "\\"deadline\\":null,"
-    else
-      set todoRecord to todoRecord & "\\"deadline\\":\\"" & (due date of t as string) & "\\","
-    end if
-    
     -- Get tags
     set tagList to {}
     repeat with tg in tags of t
-      set end of tagList to "\\"" & (name of tg) & "\\""
+      set end of tagList to (name of tg as text)
     end repeat
-    set todoRecord to todoRecord & "\\"tags\\":[" & (my joinList(tagList, ",")) & "],"
     
-    -- Get project
-    if project of t is missing value then
-      set todoRecord to todoRecord & "\\"projectId\\":null,"
-    else
-      set todoRecord to todoRecord & "\\"projectId\\":\\"" & (id of project of t) & "\\","
+    -- Create dictionary for JSON serialization
+    set todoDict to current application's NSMutableDictionary's dictionary()
+    todoDict's setObject:(id of t) forKey:"id"
+    todoDict's setObject:(name of t) forKey:"title"
+    todoDict's setObject:(status of t is completed) forKey:"completed"
+    
+    -- Add optional fields
+    if notes of t is not missing value and notes of t is not "" then
+      todoDict's setObject:(notes of t) forKey:"notes"
     end if
     
-    -- Get area
-    if area of t is missing value then
-      set todoRecord to todoRecord & "\\"areaId\\":null"
-    else
-      set todoRecord to todoRecord & "\\"areaId\\":\\"" & (id of area of t) & "\\""
+    if activation date of t is not missing value then
+      todoDict's setObject:(activation date of t as string) forKey:"whenDate"
     end if
     
-    set todoRecord to todoRecord & "}"
-    return todoRecord
-  on error
+    if due date of t is not missing value then
+      todoDict's setObject:(due date of t as string) forKey:"deadline"
+    end if
+    
+    -- Convert tag list to NSArray
+    set nsTagArray to current application's NSArray's arrayWithArray:tagList
+    todoDict's setObject:nsTagArray forKey:"tags"
+    
+    if project of t is not missing value then
+      todoDict's setObject:(id of project of t) forKey:"projectId"
+    end if
+    
+    if area of t is not missing value then
+      todoDict's setObject:(id of area of t) forKey:"areaId"
+    end if
+    
+    -- Convert to JSON
+    set jsonData to current application's NSJSONSerialization's dataWithJSONObject:todoDict options:0 |error|:(missing value)
+    if jsonData is missing value then
+      return "null"
+    else
+      set jsonString to current application's NSString's alloc()'s initWithData:jsonData encoding:(current application's NSUTF8StringEncoding)
+      return jsonString as text
+    end if
+    
+  on error errMsg
     return "null"
   end try
 end tell`;
@@ -466,74 +459,74 @@ export function getProjectById(id: string): string {
   const escapedId = bridge.escapeString(id);
   
   return `
+use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
 tell application "Things3"
   try
     set p to project id "${escapedId}"
     
-    set projectRecord to "{"
-    set projectRecord to projectRecord & "\\"id\\":\\"" & (id of p) & "\\","
-    set projectRecord to projectRecord & "\\"name\\":\\"" & (name of p) & "\\","
-    
-    -- Handle notes
-    if notes of p is missing value then
-      set projectRecord to projectRecord & "\\"notes\\":null,"
-    else
-      set projectRecord to projectRecord & "\\"notes\\":\\"" & (notes of p) & "\\","
-    end if
-    
-    set projectRecord to projectRecord & "\\"completed\\":" & (status of p is completed) & ","
-    
-    -- Handle when date
-    if activation date of p is missing value then
-      set projectRecord to projectRecord & "\\"whenDate\\":null,"
-    else
-      set projectRecord to projectRecord & "\\"whenDate\\":\\"" & (activation date of p as string) & "\\","
-    end if
-    
-    -- Handle deadline
-    if due date of p is missing value then
-      set projectRecord to projectRecord & "\\"deadline\\":null,"
-    else
-      set projectRecord to projectRecord & "\\"deadline\\":\\"" & (due date of p as string) & "\\","
-    end if
-    
     -- Get tags
     set tagList to {}
     repeat with tg in tags of p
-      set end of tagList to "\\"" & (name of tg) & "\\""
+      set end of tagList to (name of tg as text)
     end repeat
-    set projectRecord to projectRecord & "\\"tags\\":[" & (my joinList(tagList, ",")) & "],"
-    
-    -- Get area
-    if area of p is missing value then
-      set projectRecord to projectRecord & "\\"areaId\\":null,"
-    else
-      set projectRecord to projectRecord & "\\"areaId\\":\\"" & (id of area of p) & "\\","
-    end if
     
     -- Get headings (sections within project)
-    set headingsList to {}
+    set headingsList to current application's NSMutableArray's array()
     repeat with h in to dos of p
       if class of h is project then
-        set headingRecord to "{\\"id\\":\\"" & (id of h) & "\\",\\"title\\":\\"" & (name of h) & "\\"}"
-        set end of headingsList to headingRecord
+        set headingDict to current application's NSMutableDictionary's dictionary()
+        headingDict's setObject:(id of h) forKey:"id"
+        headingDict's setObject:(name of h) forKey:"title"
+        headingsList's addObject:headingDict
       end if
     end repeat
-    set projectRecord to projectRecord & "\\"headings\\":[" & (my joinList(headingsList, ",")) & "]"
     
-    set projectRecord to projectRecord & "}"
-    return projectRecord
-  on error
+    -- Create dictionary instead of record to avoid missing value issues
+    set projectDict to current application's NSMutableDictionary's dictionary()
+    projectDict's setObject:(id of p) forKey:"id"
+    projectDict's setObject:(name of p) forKey:"name"
+    projectDict's setObject:(status of p is completed) forKey:"completed"
+    
+    -- Add optional fields
+    if notes of p is not missing value and notes of p is not "" then
+      projectDict's setObject:(notes of p) forKey:"notes"
+    end if
+    
+    if activation date of p is not missing value then
+      projectDict's setObject:(activation date of p as string) forKey:"whenDate"
+    end if
+    
+    if due date of p is not missing value then
+      projectDict's setObject:(due date of p as string) forKey:"deadline"
+    end if
+    
+    -- Convert tag list to NSArray
+    set nsTagArray to current application's NSArray's arrayWithArray:tagList
+    projectDict's setObject:nsTagArray forKey:"tags"
+    
+    if area of p is not missing value then
+      projectDict's setObject:(id of area of p) forKey:"areaId"
+    end if
+    
+    -- Add headings array
+    projectDict's setObject:headingsList forKey:"headings"
+    
+    -- Convert to JSON
+    set jsonData to current application's NSJSONSerialization's dataWithJSONObject:projectDict options:0 |error|:(missing value)
+    if jsonData is missing value then
+      return "null"
+    else
+      set jsonString to current application's NSString's alloc()'s initWithData:jsonData encoding:(current application's NSUTF8StringEncoding)
+      return jsonString as text
+    end if
+    
+  on error errMsg
     return "null"
   end try
-end tell
-
-on joinList(lst, delim)
-  set AppleScript's text item delimiters to delim
-  set txt to lst as text
-  set AppleScript's text item delimiters to ""
-  return txt
-end joinList`;
+end tell`;
 }
 
 /**
