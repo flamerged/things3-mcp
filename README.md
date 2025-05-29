@@ -76,7 +76,7 @@ cd /path/to/things3-mcp && npm start
 
 ### TODO Tools (7)
 
-#### `todos.list`
+#### `todos_list`
 List TODOs with flexible filtering options.
 
 **Parameters:**
@@ -91,13 +91,13 @@ List TODOs with flexible filtering options.
 }
 ```
 
-#### `todos.get`
+#### `todos_get`
 Get detailed information about a specific TODO.
 
 **Parameters:**
 - `id`: The TODO's unique identifier (required)
 
-#### `todos.create`
+#### `todos_create`
 Create a new TODO with full property support.
 
 **Parameters:**
@@ -106,7 +106,7 @@ Create a new TODO with full property support.
 - `whenDate`: ISO 8601 date string for scheduling (optional)
 - `deadline`: ISO 8601 date string for due date (optional)
 - `tags`: Array of tag names (optional)
-- `checklistItems`: Array of checklist items (optional)
+- `checklistItems`: Array of checklist item titles (optional) *
 - `projectId`: Assign to project (optional)
 - `areaId`: Assign to area (optional)
 
@@ -118,30 +118,37 @@ Create a new TODO with full property support.
   "whenDate": "2024-12-15T09:00:00Z",
   "deadline": "2024-12-20T17:00:00Z",
   "tags": ["work", "urgent"],
+  "checklistItems": ["Review revenue", "Check expenses", "Update forecast"],
   "projectId": "project-id-here"
 }
 ```
 
-#### `todos.update`
+\* **Note on Checklists**: When `checklistItems` are provided, the TODO is created using Things3's URL scheme instead of AppleScript. This approach has some limitations:
+- Things3 may briefly come to the foreground
+- The created TODO's ID cannot be directly retrieved, so the server searches for it by title
+- If multiple TODOs have identical titles, the wrong TODO might be returned
+- URL scheme support must be enabled in Things3 settings (Settings → General → Enable Things URLs)
+
+#### `todos_update`
 Update an existing TODO's properties.
 
 **Parameters:**
 - `id`: TODO identifier (required)
-- All parameters from `todos.create` (optional)
+- All parameters from `todos_create` (optional)
 
-#### `todos.complete`
+#### `todos_complete`
 Mark one or more TODOs as complete.
 
 **Parameters:**
 - `ids`: Single ID or array of IDs (required)
 
-#### `todos.uncomplete`
+#### `todos_uncomplete`
 Mark one or more TODOs as incomplete.
 
 **Parameters:**
 - `ids`: Single ID or array of IDs (required)
 
-#### `todos.delete`
+#### `todos_delete`
 Delete one or more TODOs permanently.
 
 **Parameters:**
@@ -149,20 +156,20 @@ Delete one or more TODOs permanently.
 
 ### Project Tools (5)
 
-#### `projects.list`
+#### `projects_list`
 List projects with optional filtering.
 
 **Parameters:**
 - `areaId`: Filter by area (optional)
 - `includeCompleted`: Include completed projects (optional, default: false)
 
-#### `projects.get`
+#### `projects_get`
 Get detailed project information.
 
 **Parameters:**
 - `id`: Project identifier (required)
 
-#### `projects.create`
+#### `projects_create`
 Create a new project.
 
 **Parameters:**
@@ -174,14 +181,14 @@ Create a new project.
 - `tags`: Array of tag names (optional)
 - `headings`: Array of section headings (optional)
 
-#### `projects.update`
+#### `projects_update`
 Update project properties.
 
 **Parameters:**
 - `id`: Project identifier (required)
-- All parameters from `projects.create` except `headings` (optional)
+- All parameters from `projects_create` except `headings` (optional)
 
-#### `projects.complete`
+#### `projects_complete`
 Mark a project as complete.
 
 **Parameters:**
@@ -189,13 +196,13 @@ Mark a project as complete.
 
 ### Area Tools (2)
 
-#### `areas.list`
+#### `areas_list`
 List all areas.
 
 **Parameters:**
 - `includeHidden`: Include hidden areas (optional, default: false)
 
-#### `areas.create`
+#### `areas_create`
 Create a new area.
 
 **Parameters:**
@@ -203,26 +210,26 @@ Create a new area.
 
 ### Tag Tools (4)
 
-#### `tags.list`
+#### `tags_list`
 List all tags with hierarchy information.
 
 **Returns:** Array of tags with `parentTagId` for nested tags
 
-#### `tags.create`
+#### `tags_create`
 Create a new tag.
 
 **Parameters:**
 - `name`: Tag name (required)
 - `parentTagId`: Parent tag for nesting (optional)
 
-#### `tags.add`
+#### `tags_add`
 Add tags to items.
 
 **Parameters:**
 - `itemIds`: Single ID or array of TODO/Project IDs (required)
 - `tags`: Array of tag names to add (required)
 
-#### `tags.remove`
+#### `tags_remove`
 Remove tags from items.
 
 **Parameters:**
@@ -231,7 +238,7 @@ Remove tags from items.
 
 ### Bulk Tools (2)
 
-#### `bulk.move`
+#### `bulk_move`
 Move multiple TODOs to a project or area.
 
 **Parameters:**
@@ -239,7 +246,7 @@ Move multiple TODOs to a project or area.
 - `projectId`: Target project (optional)
 - `areaId`: Target area (optional)
 
-#### `bulk.updateDates`
+#### `bulk_updateDates`
 Update dates for multiple TODOs.
 
 **Parameters:**
@@ -249,7 +256,7 @@ Update dates for multiple TODOs.
 
 ### Logbook Tool (1)
 
-#### `logbook.search`
+#### `logbook_search`
 Search completed items in the logbook.
 
 **Parameters:**
@@ -260,10 +267,10 @@ Search completed items in the logbook.
 
 ### System Tools (2)
 
-#### `system.refresh`
+#### `system_refresh`
 Manually refresh all caches.
 
-#### `system.launch`
+#### `system_launch`
 Ensure Things3 is running and ready.
 
 ## Error Correction
@@ -292,7 +299,7 @@ Claude: I'll create a website redesign project with those tasks for you.
 Create a TODO:
 ```json
 {
-  "tool": "todos.create",
+  "tool": "todos_create",
   "parameters": {
     "title": "Prepare presentation",
     "notes": "Include Q4 metrics and projections",
@@ -305,7 +312,7 @@ Create a TODO:
 List today's tasks:
 ```json
 {
-  "tool": "todos.list",
+  "tool": "todos_list",
   "parameters": {
     "filter": "today"
   }
@@ -392,15 +399,22 @@ things3-mcp/
 
 ### Performance Issues
 - The server caches projects, areas, and tags for 5 minutes
-- Use `system.refresh` to manually clear caches if needed
+- Use `system_refresh` to manually clear caches if needed
 - For large operations, use bulk tools instead of individual operations
 
 ## Known Limitations
 
-1. **Checklist Items**: Things3's AppleScript API doesn't support modifying checklist items after creation
+1. **Checklist Items**: 
+   - Things3's AppleScript API doesn't support checklist manipulation
+   - We use URL schemes as a workaround when creating TODOs with checklists
+   - This may cause Things3 to briefly come to the foreground
+   - Existing checklist items cannot be modified after creation
 2. **Project Deletion**: Projects cannot be deleted via AppleScript, only completed
 3. **Reminder Details**: Limited reminder information available through AppleScript
 4. **Tag Hierarchy**: Tag parent-child relationships are read-only
+5. **URL Scheme Limitations**: 
+   - When using URL schemes (for checklists), the newly created TODO's ID cannot be directly retrieved
+   - The server performs a search to find the created TODO, which may fail if multiple TODOs have identical titles
 
 ## Contributing
 

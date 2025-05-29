@@ -100,6 +100,13 @@ export function getTodoById(id: string): string {
   const escapedId = bridge.escapeString(id);
   
   return `
+on joinList(lst, delim)
+  set AppleScript's text item delimiters to delim
+  set txt to lst as text
+  set AppleScript's text item delimiters to ""
+  return txt
+end joinList
+
 tell application "Things3"
   try
     set t to to do id "${escapedId}"
@@ -157,14 +164,7 @@ tell application "Things3"
   on error
     return "null"
   end try
-end tell
-
-on joinList(lst, delim)
-  set AppleScript's text item delimiters to delim
-  set txt to lst as text
-  set AppleScript's text item delimiters to ""
-  return txt
-end joinList`;
+end tell`;
 }
 
 /**

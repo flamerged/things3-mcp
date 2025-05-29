@@ -23,6 +23,8 @@ import {
 } from '../types/index.js';
 import * as templates from '../templates/applescript-templates.js';
 import { ErrorCorrector } from '../utils/error-correction.js';
+import { urlSchemeHandler } from '../utils/url-scheme.js';
+import { createLogger } from '../utils/logger.js';
 
 /**
  * Handles all TODO-related operations
@@ -30,6 +32,7 @@ import { ErrorCorrector } from '../utils/error-correction.js';
 export class TodosTools {
   private bridge: AppleScriptBridge;
   private errorCorrector: ErrorCorrector;
+  private logger = createLogger('todos');
 
   constructor() {
     this.bridge = new AppleScriptBridge();
@@ -150,6 +153,63 @@ export class TodosTools {
         this.errorCorrector.logCorrections(correctionReport);
       }
       
+      // If checklist items are provided, use URL scheme instead of AppleScript
+      if (correctedParams.checklistItems && correctedParams.checklistItems.length > 0) {
+        const urlParams: Parameters<typeof urlSchemeHandler.createTodoWithChecklist>[0] = {
+          title: correctedParams.title,
+          checklistItems: correctedParams.checklistItems
+        };
+        
+        if (correctedParams.notes) urlParams.notes = correctedParams.notes;
+        if (correctedParams.whenDate) urlParams.whenDate = correctedParams.whenDate;
+        if (correctedParams.deadline) urlParams.deadline = correctedParams.deadline;
+        if (correctedParams.tags) urlParams.tags = correctedParams.tags;
+        if (correctedParams.projectId) urlParams.projectId = correctedParams.projectId;
+        if (correctedParams.areaId) urlParams.areaId = correctedParams.areaId;
+        
+        await urlSchemeHandler.createTodoWithChecklist(urlParams);
+        
+        // Since URL scheme doesn't return the ID, we need to find the newly created todo
+        // by searching for it (this is a limitation of the URL scheme approach)
+        this.logger.info(`Searching for newly created TODO with title: "${correctedParams.title}"`);
+        
+        // First try with inbox filter (most likely location for new todos)
+        let searchResult = await this.listTodos({
+          filter: 'inbox',
+          limit: 50
+        });
+        
+        // Filter by title
+        searchResult = searchResult.filter(todo => 
+          todo.title === correctedParams.title
+        );
+        
+        this.logger.info(`Search found ${searchResult.length} TODOs matching title`);
+        
+        if (searchResult.length > 0) {
+          const firstResult = searchResult[0];
+          if (!firstResult) {
+            throw new Error('Failed to find created TODO');
+          }
+          
+          const result: TodosCreateResult = {
+            success: true,
+            id: firstResult.id
+          };
+          
+          if (correctionReport.hasCorrections) {
+            result.correctionsMade = correctionReport.corrections.map(c => 
+              `${c.type}: ${c.reason}`
+            );
+          }
+          
+          return result;
+        } else {
+          throw new Error('Failed to retrieve newly created TODO with checklist');
+        }
+      }
+      
+      // Use regular AppleScript for todos without checklists
       const script = templates.createTodo(
         correctedParams.title,
         correctedParams.notes,
@@ -161,11 +221,6 @@ export class TodosTools {
       );
       
       const todoId = await this.bridge.execute(script);
-      
-      // Handle checklist items if provided
-      if (correctedParams.checklistItems && correctedParams.checklistItems.length > 0) {
-        // TODO: Add checklist items via separate AppleScript
-      }
       
       // Handle reminder if provided
       if (correctedParams.reminder) {
@@ -326,7 +381,7 @@ export class TodosTools {
   static getTools(): Tool[] {
     return [
       {
-        name: 'todos.list',
+        name: 'todos_list',
         description: 'List TODOs with optional filtering',
         inputSchema: {
           type: 'object',
@@ -370,7 +425,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.get',
+        name: 'todos_get',
         description: 'Get full details of a specific TODO',
         inputSchema: {
           type: 'object',
@@ -384,7 +439,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.create',
+        name: 'todos_create',
         description: 'Create a new TODO',
         inputSchema: {
           type: 'object',
@@ -437,7 +492,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.update',
+        name: 'todos_update',
         description: 'Update an existing TODO',
         inputSchema: {
           type: 'object',
@@ -480,7 +535,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.complete',
+        name: 'todos_complete',
         description: 'Mark TODO(s) as complete',
         inputSchema: {
           type: 'object',
@@ -497,7 +552,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.uncomplete',
+        name: 'todos_uncomplete',
         description: 'Mark TODO(s) as incomplete',
         inputSchema: {
           type: 'object',
@@ -514,7 +569,7 @@ export class TodosTools {
         },
       },
       {
-        name: 'todos.delete',
+        name: 'todos_delete',
         description: 'Delete TODO(s)',
         inputSchema: {
           type: 'object',
