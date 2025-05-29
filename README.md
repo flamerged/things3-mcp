@@ -23,9 +23,44 @@ A powerful MCP (Model Context Protocol) server that provides comprehensive integ
 
 ## Installation
 
+### Quick Start (Recommended)
+
+Once published to npm, you can use the server without any installation:
+
+```json
+{
+  "mcpServers": {
+    "things3": {
+      "command": "npx",
+      "args": ["things3-mcp@latest"]
+    }
+  }
+}
+```
+
+### Install from npm
+
+```bash
+npm install -g things3-mcp
+```
+
+Then add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "things3": {
+      "command": "things3-mcp"
+    }
+  }
+}
+```
+
+### Install from Source
+
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/things3-mcp.git
+git clone https://github.com/urbanogardun/things3-mcp.git
 cd things3-mcp
 
 # Install dependencies
@@ -41,18 +76,39 @@ npm run build
 
 1. Open Claude Desktop configuration:
    - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows**: Not applicable (Things3 is macOS-only)
 
-2. Add the Things3 MCP server:
+2. Add the Things3 MCP server using one of these methods:
+
+   **Method 1: Using npx (easiest, no installation required)**
+   ```json
+   {
+     "mcpServers": {
+       "things3": {
+         "command": "npx",
+         "args": ["things3-mcp@latest"]
+       }
+     }
+   }
+   ```
+
+   **Method 2: Global npm install**
+   ```json
+   {
+     "mcpServers": {
+       "things3": {
+         "command": "things3-mcp"
+       }
+     }
+   }
+   ```
+
+   **Method 3: Local installation**
    ```json
    {
      "mcpServers": {
        "things3": {
          "command": "node",
-         "args": ["/absolute/path/to/things3-mcp/dist/index.js"],
-         "env": {
-           "NODE_ENV": "production"
-         }
+         "args": ["/absolute/path/to/things3-mcp/dist/index.js"]
        }
      }
    }
@@ -62,15 +118,7 @@ npm run build
 
 ### For Other MCP Clients
 
-Configure your MCP client to run:
-```bash
-node /path/to/things3-mcp/dist/index.js
-```
-
-Or use npm:
-```bash
-cd /path/to/things3-mcp && npm start
-```
+Use any of the methods above, adapting the configuration to your MCP client's format.
 
 ## Available Tools
 

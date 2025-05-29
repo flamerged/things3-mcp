@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // ABOUTME: Entry point for the Things3 MCP server
 // ABOUTME: Initializes and starts the MCP server for Things3 integration
 
