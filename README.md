@@ -1,7 +1,7 @@
 # Things3 MCP Server
 
 [![Test](https://github.com/urbanogardun/things3-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/urbanogardun/things3-mcp/actions/workflows/test.yml)
-[![npm version](https://badge.fury.io/js/things3-mcp.svg)](https://www.npmjs.com/package/things3-mcp)
+[![npm version](https://badge.fury.io/js/things3-mcp.svg)](https://badge.fury.io/js/things3-mcp)
 
 A powerful MCP (Model Context Protocol) server that provides comprehensive integration with Things3 on macOS. This server enables AI assistants and other MCP clients to interact with Things3 through 23 specialized tools, offering complete task management capabilities with intelligent caching and error correction.
 
