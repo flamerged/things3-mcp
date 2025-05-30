@@ -14,9 +14,9 @@ import {
 } from '../types/index.js';
 import { 
   listTags, 
-  createTag, 
-  addTagsToItems, 
-  removeTagsFromItems 
+  createTag,
+  addTagsToItems,
+  removeTagsFromItems
 } from '../templates/applescript-templates.js';
 import { 
   cleanTagName, 

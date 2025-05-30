@@ -144,9 +144,6 @@ export class TodosTools {
     try {
       await this.bridge.ensureThings3Running();
       
-      // TODO: Temporarily skip refresh to avoid performance issues
-      // await this.errorCorrector.refreshValidIds(this.bridge);
-      
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoCreateParams(params);
       const correctedParams = correctionReport.correctedData;
@@ -156,48 +153,75 @@ export class TodosTools {
         this.errorCorrector.logCorrections(correctionReport);
       }
       
-      // If checklist items are provided, use URL scheme instead of AppleScript
-      if (correctedParams.checklistItems && correctedParams.checklistItems.length > 0) {
-        const urlParams: Parameters<typeof urlSchemeHandler.createTodoWithChecklist>[0] = {
-          title: correctedParams.title,
-          checklistItems: correctedParams.checklistItems
+      // Always use URL scheme for creating TODOs (more reliable than AppleScript)
+      const createParams: Parameters<typeof urlSchemeHandler.createTodo>[0] = {
+        title: correctedParams.title
+      };
+      
+      if (correctedParams.notes) createParams.notes = correctedParams.notes;
+      if (correctedParams.whenDate) createParams.whenDate = correctedParams.whenDate;
+      if (correctedParams.deadline) createParams.deadline = correctedParams.deadline;
+      if (correctedParams.tags) createParams.tags = correctedParams.tags;
+      if (correctedParams.checklistItems) createParams.checklistItems = correctedParams.checklistItems;
+      if (correctedParams.projectId) createParams.projectId = correctedParams.projectId;
+      if (correctedParams.areaId) createParams.areaId = correctedParams.areaId;
+      
+      await urlSchemeHandler.createTodo(createParams);
+      
+      // Since URL scheme doesn't return the ID, we need to find the newly created todo
+      // by searching for it (this is a limitation of the URL scheme approach)
+      this.logger.info(`Searching for newly created TODO with title: "${correctedParams.title}"`);
+      
+      // Wait a bit for Things3 to process the creation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Search for the TODO we just created
+      let searchResult = await this.listTodos({
+        searchText: correctedParams.title,
+        limit: 10
+      });
+      
+      // Filter for exact title match
+      searchResult = searchResult.filter(todo => 
+        todo.title === correctedParams.title
+      );
+      
+      this.logger.info(`Search found ${searchResult.length} TODOs matching title`);
+      
+      if (searchResult.length > 0) {
+        // Get the most recent one (likely our newly created TODO)
+        const newTodo = searchResult[0];
+        if (!newTodo) {
+          throw new Error('Failed to find created TODO');
+        }
+        
+        const result: TodosCreateResult = {
+          success: true,
+          id: newTodo.id
         };
         
-        if (correctedParams.notes) urlParams.notes = correctedParams.notes;
-        if (correctedParams.whenDate) urlParams.whenDate = correctedParams.whenDate;
-        if (correctedParams.deadline) urlParams.deadline = correctedParams.deadline;
-        if (correctedParams.tags) urlParams.tags = correctedParams.tags;
-        if (correctedParams.projectId) urlParams.projectId = correctedParams.projectId;
-        if (correctedParams.areaId) urlParams.areaId = correctedParams.areaId;
+        if (correctionReport.hasCorrections) {
+          result.correctionsMade = correctionReport.corrections.map(c => 
+            `${c.type}: ${c.reason}`
+          );
+        }
         
-        await urlSchemeHandler.createTodoWithChecklist(urlParams);
+        return result;
+      } else {
+        // Try one more time with a broader search
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Since URL scheme doesn't return the ID, we need to find the newly created todo
-        // by searching for it (this is a limitation of the URL scheme approach)
-        this.logger.info(`Searching for newly created TODO with title: "${correctedParams.title}"`);
-        
-        // First try with inbox filter (most likely location for new todos)
-        let searchResult = await this.listTodos({
+        searchResult = await this.listTodos({
           filter: 'inbox',
           limit: 50
         });
         
-        // Filter by title
-        searchResult = searchResult.filter(todo => 
-          todo.title === correctedParams.title
-        );
+        const matchingTodo = searchResult.find(todo => todo.title === correctedParams.title);
         
-        this.logger.info(`Search found ${searchResult.length} TODOs matching title`);
-        
-        if (searchResult.length > 0) {
-          const firstResult = searchResult[0];
-          if (!firstResult) {
-            throw new Error('Failed to find created TODO');
-          }
-          
+        if (matchingTodo) {
           const result: TodosCreateResult = {
             success: true,
-            id: firstResult.id
+            id: matchingTodo.id
           };
           
           if (correctionReport.hasCorrections) {
@@ -207,36 +231,18 @@ export class TodosTools {
           }
           
           return result;
-        } else {
-          throw new Error('Failed to retrieve newly created TODO with checklist');
         }
+        
+        // If we still can't find it, return success without ID
+        this.logger.warn('Created TODO but could not retrieve its ID');
+        return {
+          success: true,
+          id: 'unknown',
+          correctionsMade: correctionReport.corrections.map(c => 
+            `${c.field}: ${c.reason}`
+          ),
+        };
       }
-      
-      // Use regular AppleScript for todos without checklists
-      const script = templates.createTodo(
-        correctedParams.title,
-        correctedParams.notes,
-        correctedParams.whenDate,
-        correctedParams.deadline,
-        correctedParams.tags,
-        correctedParams.projectId,
-        correctedParams.areaId
-      );
-      
-      const todoId = await this.bridge.execute(script);
-      
-      // Handle reminder if provided
-      if (correctedParams.reminder) {
-        // TODO: Add reminder via separate AppleScript
-      }
-      
-      return {
-        success: true,
-        id: todoId,
-        correctionsMade: correctionReport.corrections.map(c => 
-          `${c.field}: ${c.reason}`
-        ),
-      };
     } catch (error) {
       if (error instanceof Things3Error) {
         throw error;
@@ -256,9 +262,6 @@ export class TodosTools {
     try {
       await this.bridge.ensureThings3Running();
       
-      // TODO: Temporarily skip refresh to avoid performance issues
-      // await this.errorCorrector.refreshValidIds(this.bridge);
-      
       // Apply error correction
       const correctionReport = this.errorCorrector.correctTodoUpdateParams(params);
       const correctedParams = correctionReport.correctedData;
@@ -268,19 +271,19 @@ export class TodosTools {
         this.errorCorrector.logCorrections(correctionReport);
       }
       
-      const updates: Record<string, unknown> = {};
+      // Use URL scheme for updating TODOs
+      const updateParams: Parameters<typeof urlSchemeHandler.updateTodo>[1] = {};
       
-      if (correctedParams.title !== undefined) updates['title'] = correctedParams.title;
-      if (correctedParams.notes !== undefined) updates['notes'] = correctedParams.notes;
-      if (correctedParams.whenDate !== undefined) updates['whenDate'] = correctedParams.whenDate;
-      if (correctedParams.deadline !== undefined) updates['deadline'] = correctedParams.deadline;
-      if (correctedParams.tags !== undefined) updates['tags'] = correctedParams.tags;
-      if (correctedParams.projectId !== undefined) updates['projectId'] = correctedParams.projectId;
-      if (correctedParams.areaId !== undefined) updates['areaId'] = correctedParams.areaId;
+      if (correctedParams.title !== undefined) updateParams.title = correctedParams.title;
+      if (correctedParams.notes !== undefined) updateParams.notes = correctedParams.notes;
+      if (correctedParams.whenDate !== undefined) updateParams.whenDate = correctedParams.whenDate;
+      if (correctedParams.deadline !== undefined) updateParams.deadline = correctedParams.deadline;
+      if (correctedParams.tags !== undefined) updateParams.tags = correctedParams.tags;
+      if (correctedParams.projectId !== undefined || correctedParams.areaId !== undefined) {
+        updateParams.listId = correctedParams.projectId || correctedParams.areaId || null;
+      }
       
-      const script = templates.updateTodo(correctedParams.id, updates);
-      
-      await this.bridge.execute(script);
+      await urlSchemeHandler.updateTodo(correctedParams.id, updateParams);
       
       return {
         success: true,
@@ -308,12 +311,13 @@ export class TodosTools {
       await this.bridge.ensureThings3Running();
       
       const ids = Array.isArray(params.ids) ? params.ids : [params.ids];
-      const script = templates.completeTodos(ids);
-      const completedCount = parseInt(await this.bridge.execute(script), 10);
+      
+      // Use URL scheme for completing TODOs
+      await urlSchemeHandler.completeTodos(ids);
       
       return {
         success: true,
-        completedCount,
+        completedCount: ids.length,
       };
     } catch (error) {
       if (error instanceof Things3Error) {
@@ -335,12 +339,13 @@ export class TodosTools {
       await this.bridge.ensureThings3Running();
       
       const ids = Array.isArray(params.ids) ? params.ids : [params.ids];
-      const script = templates.uncompleteTodos(ids);
-      const uncompletedCount = parseInt(await this.bridge.execute(script), 10);
+      
+      // Use URL scheme for uncompleting TODOs
+      await urlSchemeHandler.uncompleteTodos(ids);
       
       return {
         success: true,
-        uncompletedCount,
+        uncompletedCount: ids.length,
       };
     } catch (error) {
       if (error instanceof Things3Error) {
@@ -362,12 +367,13 @@ export class TodosTools {
       await this.bridge.ensureThings3Running();
       
       const ids = Array.isArray(params.ids) ? params.ids : [params.ids];
-      const script = templates.deleteTodos(ids);
-      const deletedCount = parseInt(await this.bridge.execute(script), 10);
+      
+      // Use URL scheme for deleting TODOs (cancel them)
+      await urlSchemeHandler.cancelTodos(ids);
       
       return {
         success: true,
-        deletedCount,
+        deletedCount: ids.length,
       };
     } catch (error) {
       if (error instanceof Things3Error) {

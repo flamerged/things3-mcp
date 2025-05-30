@@ -75,6 +75,22 @@ npm run build
 
 ## Configuration
 
+### Environment Variables
+
+For update operations (modify, complete, delete), you need to set your Things3 authorization token:
+
+```bash
+export THINGS3_AUTH_TOKEN="your_auth_token_here"
+```
+
+To find your authorization token:
+1. Open Things3
+2. Go to Settings → General
+3. Look for "Authorization Token" section
+4. Copy the token value
+
+You can also create a `.env` file (see `.env.example`).
+
 ### For Claude Desktop
 
 1. Open Claude Desktop configuration:
@@ -88,7 +104,10 @@ npm run build
      "mcpServers": {
        "things3": {
          "command": "npx",
-         "args": ["things3-mcp@latest"]
+         "args": ["things3-mcp@latest"],
+         "env": {
+           "THINGS3_AUTH_TOKEN": "your_auth_token_here"
+         }
        }
      }
    }
@@ -99,8 +118,10 @@ npm run build
    {
      "mcpServers": {
        "things3": {
-         "command": "things3-mcp"
-       }
+         "command": "things3-mcp",
+         "env": {
+           "THINGS3_AUTH_TOKEN": "your_auth_token_here"
+         }
      }
    }
    ```

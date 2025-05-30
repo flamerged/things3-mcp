@@ -2,16 +2,12 @@
 // ABOUTME: Provides bulk move and bulk date update operations
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
-import * as templates from '../templates/applescript-templates.js';
 import { BulkMoveParams, BulkUpdateDatesParams } from '../types/tools.js';
-import { isoToAppleScriptDate } from '../utils/date-handler.js';
+import { urlSchemeHandler } from '../utils/url-scheme.js';
 
 export class BulkTools {
-  private bridge: AppleScriptBridge;
-
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    // Using URL scheme instead of AppleScript bridge
   }
 
   /**
@@ -26,10 +22,11 @@ export class BulkTools {
     // Convert single ID to array
     const todoIds = Array.isArray(params.todoIds) ? params.todoIds : [params.todoIds];
 
-    const script = templates.bulkMoveTodos(todoIds, params.projectId ?? undefined, params.areaId ?? undefined);
-    const result = await this.bridge.execute(script);
+    // Use URL scheme for bulk moving TODOs
+    await urlSchemeHandler.bulkMoveTodos(todoIds, params.projectId ?? undefined, params.areaId ?? undefined);
+    
     return {
-      moved: parseInt(result, 10) || 0
+      moved: todoIds.length
     };
   }
 
@@ -40,22 +37,15 @@ export class BulkTools {
     // Convert single ID to array
     const todoIds = Array.isArray(params.todoIds) ? params.todoIds : [params.todoIds];
 
-    // Convert dates to AppleScript format if provided
-    let whenDateScript: string | null | undefined;
-    let deadlineScript: string | null | undefined;
-
-    if (params.whenDate !== undefined) {
-      whenDateScript = params.whenDate ? isoToAppleScriptDate(params.whenDate) : null;
-    }
-
-    if (params.deadline !== undefined) {
-      deadlineScript = params.deadline ? isoToAppleScriptDate(params.deadline) : null;
-    }
-
-    const script = templates.bulkUpdateDates(todoIds, whenDateScript, deadlineScript);
-    const result = await this.bridge.execute(script);
+    // Use URL scheme for bulk updating dates
+    await urlSchemeHandler.bulkUpdateDates(
+      todoIds, 
+      params.whenDate, 
+      params.deadline
+    );
+    
     return {
-      updated: parseInt(result, 10) || 0
+      updated: todoIds.length
     };
   }
 
