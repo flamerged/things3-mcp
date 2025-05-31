@@ -34,7 +34,7 @@ export enum Things3ItemType {
  * Extended attributes interface that supports auth-token
  */
 interface Things3AttributesWithAuth {
-  [key: string]: any;
+  [key: string]: unknown;
   'auth-token'?: string;
 }
 
@@ -70,7 +70,7 @@ export class URLSchemeHandler {
   /**
    * Build a URL for a simple operation
    */
-  private buildUrl(operation: Things3Operation, params: Record<string, any>): string {
+  private buildUrl(operation: Things3Operation, params: Record<string, unknown>): string {
     const baseUrl = `things:///${operation}`;
     const urlParams = new URLSearchParams();
     
@@ -103,7 +103,7 @@ export class URLSchemeHandler {
   /**
    * Build a JSON-based URL for complex operations
    */
-  private buildJsonUrl(items: any[]): string {
+  private buildJsonUrl(items: Array<Record<string, unknown>>): string {
     const jsonData = JSON.stringify(items);
     const encodedData = encodeURIComponent(jsonData);
     
@@ -346,7 +346,7 @@ export class URLSchemeHandler {
     areaId?: string;
     headings?: string[];
   }): Promise<void> {
-    const items: any[] = [];
+    const items: Array<Record<string, unknown>> = [];
     
     // Add headings as items
     if (params.headings) {
@@ -555,6 +555,53 @@ export class URLSchemeHandler {
     await this.execute(url);
   }
   
+  /**
+   * Add tags to items (TODOs or Projects) using URL scheme
+   */
+  async addTagsToItems(itemIds: string[], tags: string[]): Promise<void> {
+    const items = itemIds.map(id => ({
+      type: Things3ItemType.TODO, // Works for both TODOs and projects
+      id,
+      operation: 'update' as const,
+      attributes: {
+        'add-tags': tags
+      }
+    }));
+    
+    const url = this.buildJsonUrl(items);
+    await this.execute(url);
+  }
+
+  /**
+   * Remove tags from items (TODOs or Projects) using URL scheme
+   * Note: Since Things3 doesn't support direct tag removal, this removes ALL tags
+   */
+  async removeTagsFromItems(itemIds: string[]): Promise<void> {
+    // For now, we'll clear all tags since Things3 doesn't support selective removal
+    // In a real implementation, we'd need to:
+    // 1. Get current tags for each item
+    // 2. Remove the specified tags  
+    // 3. Set the remaining tags
+    const authToken = this.getAuthToken();
+    const items = itemIds.map(id => {
+      const attributes: Things3AttributesWithAuth = {
+        'tags': [] // Clear all tags
+      };
+      if (authToken) {
+        attributes['auth-token'] = authToken;
+      }
+      return {
+        type: Things3ItemType.TODO, // Works for both TODOs and projects
+        id,
+        operation: 'update' as const,
+        attributes
+      };
+    });
+    
+    const url = this.buildJsonUrl(items);
+    await this.execute(url);
+  }
+
   /**
    * Parse Things3 URL callback response
    */

@@ -15,7 +15,6 @@ import {
 import { 
   listTags, 
   createTag,
-  addTagsToItems,
   removeTagsFromItems
 } from '../templates/applescript-templates.js';
 import { 
@@ -23,6 +22,7 @@ import {
   cleanTags
 } from '../utils/tag-validator.js';
 import { AppleScriptBridge } from '../utils/applescript.js';
+import { urlSchemeHandler } from '../utils/url-scheme.js';
 
 export class TagTools extends CacheAwareBase {
   private static readonly CACHE_KEY = 'tags:list';
@@ -103,15 +103,14 @@ export class TagTools extends CacheAwareBase {
       };
     }
 
-    const script = addTagsToItems(params.itemIds, cleanedTags);
-    
     try {
-      const result = await this.bridge.execute(script);
-      const updatedCount = parseInt(result, 10) || 0;
+      // Use URL scheme for write operations
+      await urlSchemeHandler.addTagsToItems(params.itemIds, cleanedTags);
       
+      // Since URL scheme doesn't return count, assume all items were updated
       return { 
         success: true, 
-        updatedCount 
+        updatedCount: params.itemIds.length 
       };
     } catch (error) {
       return {
@@ -137,6 +136,7 @@ export class TagTools extends CacheAwareBase {
       };
     }
 
+    // Use AppleScript for tag removal since URL scheme can only clear ALL tags
     const script = removeTagsFromItems(params.itemIds, cleanedTags);
     
     try {
