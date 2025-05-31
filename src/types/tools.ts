@@ -63,6 +63,8 @@ export interface TodosCreateParams {
   tags?: string[];
   projectId?: string;
   areaId?: string;
+  headingId?: string;
+  heading?: string;
   checklistItems?: string[];
   reminder?: {
     dateTime?: string;

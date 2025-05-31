@@ -169,6 +169,8 @@ export class URLSchemeHandler {
     checklistItems?: string[];
     projectId?: string;
     areaId?: string;
+    headingId?: string;
+    heading?: string;
   }): Promise<void> {
     if (params.checklistItems && params.checklistItems.length > 0) {
       // Use JSON format for complex todos with checklists
@@ -213,7 +215,9 @@ export class URLSchemeHandler {
         when: this.formatDateForUrl(params.whenDate),
         deadline: this.formatDateForUrl(params.deadline),
         tags: params.tags?.join(','),
-        'list-id': params.projectId || params.areaId
+        'list-id': params.projectId || params.areaId,
+        'heading-id': params.headingId,
+        'heading': params.heading
       });
       await this.execute(url);
     }
