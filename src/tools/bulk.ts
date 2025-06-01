@@ -14,15 +14,11 @@ export class BulkTools {
    * Bulk move TODOs to a project or area
    */
   async move(params: BulkMoveParams): Promise<{ moved: number }> {
-    // Ensure we have at least one destination
-    if (!params.projectId && !params.areaId) {
-      throw new Error('Either projectId or areaId must be specified');
-    }
-
     // Convert single ID to array
     const todoIds = Array.isArray(params.todoIds) ? params.todoIds : [params.todoIds];
 
     // Use URL scheme for bulk moving TODOs
+    // If neither projectId nor areaId is provided, TODOs will be moved to inbox
     await urlSchemeHandler.bulkMoveTodos(todoIds, params.projectId ?? undefined, params.areaId ?? undefined);
     
     return {
