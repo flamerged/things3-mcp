@@ -55,7 +55,7 @@ export class AreaTools extends CacheAwareBase {
     const id = await this.bridge.execute(script);
     
     // Invalidate cache since we've added a new area
-    this.cacheManager.invalidatePattern(AreaTools.CACHE_KEY);
+    this.cacheManager.invalidatePattern(`${AreaTools.CACHE_KEY}*`);
     
     return { id, success: true };
   }
