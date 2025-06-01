@@ -151,42 +151,23 @@ export class EnhancedTestResourceTracker {
       }
     }
 
-    // Delete projects
-    for (const projectId of this.projects) {
-      try {
-        console.log(`  Deleting project ${projectId}...`);
-        await this.server.projectTools.deleteProject({ id: projectId });
-        cleaned++;
-      } catch (error) {
-        console.error(`  ❌ Failed to delete project ${projectId}:`, error);
-        failed++;
-      }
+    // Note: Projects, areas, and tags don't have delete operations in Things3
+    // We'll track them but manual cleanup may be needed
+    if (this.projects.size > 0) {
+      console.log(`  🚨 Note: ${this.projects.size} test projects created - manual cleanup may be needed`);
+      console.log(`     Projects: ${Array.from(this.projects).join(', ')}`);
     }
     this.projects.clear();
 
-    // Delete areas
-    for (const areaName of this.areas) {
-      try {
-        console.log(`  Deleting area "${areaName}"...`);
-        await this.server.areaTools.deleteArea({ name: areaName });
-        cleaned++;
-      } catch (error) {
-        console.error(`  ❌ Failed to delete area "${areaName}":`, error);
-        failed++;
-      }
+    if (this.areas.size > 0) {
+      console.log(`  🚨 Note: ${this.areas.size} test areas created - manual cleanup may be needed`);
+      console.log(`     Areas: ${Array.from(this.areas).join(', ')}`);
     }
     this.areas.clear();
 
-    // Delete tags
-    for (const tagName of this.tags) {
-      try {
-        console.log(`  Deleting tag "${tagName}"...`);
-        await this.server.tagTools.deleteTag({ name: tagName });
-        cleaned++;
-      } catch (error) {
-        console.error(`  ❌ Failed to delete tag "${tagName}":`, error);
-        failed++;
-      }
+    if (this.tags.size > 0) {
+      console.log(`  🚨 Note: ${this.tags.size} test tags created - manual cleanup may be needed`);
+      console.log(`     Tags: ${Array.from(this.tags).join(', ')}`);
     }
     this.tags.clear();
 
