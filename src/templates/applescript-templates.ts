@@ -14,7 +14,11 @@ export function listTodos(
   status?: TodoStatus,
   searchText?: string
 ): string {
-  let script = 'tell application "Things3"\n';
+  let script = `use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
+tell application "Things3"\n`;
   
   // Determine which list to query
   let listName = 'to dos';
@@ -42,7 +46,7 @@ export function listTodos(
   }
   
   script += `  set todoList to ${listName}\n`;
-  script += '  set results to {}\n';
+  script += '  set resultArray to current application\'s NSMutableArray\'s array()\n';
   script += '  repeat with t in todoList\n';
   
   // Apply status filter
@@ -62,13 +66,12 @@ export function listTodos(
     script += `    if (name of t contains "${escaped}" or notes of t contains "${escaped}") then\n`;
   }
   
-  // Build result record - simplified without when date for now
-  script += '      set todoRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
-  script += ' & "\\"title\\":\\"" & (name of t) & "\\","';
-  script += ' & "\\"completed\\":" & (status of t is completed)';
-  script += ' & "}"\n';
-  script += '      set end of results to todoRecord\n';
+  // Build result using NSMutableDictionary for proper JSON serialization
+  script += '      set todoDict to current application\'s NSMutableDictionary\'s dictionary()\n';
+  script += '      todoDict\'s setObject:(id of t) forKey:"id"\n';
+  script += '      todoDict\'s setObject:(name of t) forKey:"title"\n';
+  script += '      todoDict\'s setObject:(status of t is completed) forKey:"completed"\n';
+  script += '      resultArray\'s addObject:todoDict\n';
   
   // Close conditionals
   if (searchText) {
@@ -79,16 +82,16 @@ export function listTodos(
   }
   
   script += '  end repeat\n';
-  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
-  script += 'end tell\n\n';
-  
-  // Add helper function for joining lists
-  script += 'on joinList(lst, delim)\n';
-  script += '  set AppleScript\'s text item delimiters to delim\n';
-  script += '  set txt to lst as text\n';
-  script += '  set AppleScript\'s text item delimiters to ""\n';
-  script += '  return txt\n';
-  script += 'end joinList';
+  script += '  \n';
+  script += '  -- Convert to JSON\n';
+  script += '  set jsonData to current application\'s NSJSONSerialization\'s dataWithJSONObject:resultArray options:0 |error|:(missing value)\n';
+  script += '  if jsonData is missing value then\n';
+  script += '    return "[]"\n';
+  script += '  else\n';
+  script += '    set jsonString to current application\'s NSString\'s alloc()\'s initWithData:jsonData encoding:(current application\'s NSUTF8StringEncoding)\n';
+  script += '    return jsonString as text\n';
+  script += '  end if\n';
+  script += 'end tell';
   
   return script;
 }
@@ -366,7 +369,11 @@ export function deleteTodos(ids: string[]): string {
  * Generate AppleScript to list projects
  */
 export function listProjects(areaId?: string, includeCompleted?: boolean): string {
-  let script = 'tell application "Things3"\n';
+  let script = `use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
+tell application "Things3"\n`;
   
   // Determine which projects to list
   let projectList = 'projects';
@@ -376,7 +383,7 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
   }
   
   script += `  set projectList to ${projectList}\n`;
-  script += '  set results to {}\n';
+  script += '  set resultArray to current application\'s NSMutableArray\'s array()\n';
   script += '  repeat with p in projectList\n';
   
   // Filter by completion status if specified
@@ -384,38 +391,35 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
     script += '    if status of p is open then\n';
   }
   
-  // Build result record
-  script += '      set isCompleted to (status of p is completed)\n';
+  // Build result using NSMutableDictionary
+  script += '      set projectDict to current application\'s NSMutableDictionary\'s dictionary()\n';
+  script += '      projectDict\'s setObject:(id of p) forKey:"id"\n';
+  script += '      projectDict\'s setObject:(name of p) forKey:"name"\n';
+  script += '      projectDict\'s setObject:(status of p is completed) forKey:"completed"\n';
+  script += '      \n';
+  script += '      -- Handle optional area reference\n';
   script += '      set areaRef to area of p\n';
-  script += '      if areaRef is missing value then\n';
-  script += '        set areaIdStr to "null"\n';
-  script += '      else\n';
-  script += '        set areaIdStr to "\\"" & (id of areaRef) & "\\""\n';
+  script += '      if areaRef is not missing value then\n';
+  script += '        projectDict\'s setObject:(id of areaRef) forKey:"areaId"\n';
   script += '      end if\n';
-  script += '      set projectRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of p) & "\\","';
-  script += ' & "\\"name\\":\\"" & (name of p) & "\\","';
-  script += ' & "\\"completed\\":" & isCompleted';
-  script += ' & ","';
-  script += ' & "\\"areaId\\":" & areaIdStr';
-  script += ' & "}"\n';
-  script += '      set end of results to projectRecord\n';
+  script += '      \n';
+  script += '      resultArray\'s addObject:projectDict\n';
   
   if (includeCompleted === false) {
     script += '    end if\n';
   }
   
   script += '  end repeat\n';
-  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
-  script += 'end tell\n\n';
-  
-  // Add helper function for joining lists
-  script += 'on joinList(lst, delim)\n';
-  script += '  set AppleScript\'s text item delimiters to delim\n';
-  script += '  set txt to lst as text\n';
-  script += '  set AppleScript\'s text item delimiters to ""\n';
-  script += '  return txt\n';
-  script += 'end joinList';
+  script += '  \n';
+  script += '  -- Convert to JSON\n';
+  script += '  set jsonData to current application\'s NSJSONSerialization\'s dataWithJSONObject:resultArray options:0 |error|:(missing value)\n';
+  script += '  if jsonData is missing value then\n';
+  script += '    return "[]"\n';
+  script += '  else\n';
+  script += '    set jsonString to current application\'s NSString\'s alloc()\'s initWithData:jsonData encoding:(current application\'s NSUTF8StringEncoding)\n';
+  script += '    return jsonString as text\n';
+  script += '  end if\n';
+  script += 'end tell';
   
   return script;
 }
@@ -424,32 +428,35 @@ export function listProjects(areaId?: string, includeCompleted?: boolean): strin
  * Generate AppleScript to list areas
  */
 export function listAreas(): string {
-  let script = 'tell application "Things3"\n';
+  let script = `use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
+tell application "Things3"\n`;
   script += '  set areaList to areas\n';
-  script += '  set results to {}\n';
+  script += '  set resultArray to current application\'s NSMutableArray\'s array()\n';
   script += '  repeat with a in areaList\n';
   
   // Note: Areas in Things3 don't have a visible property, so we ignore includeHidden
   
-  // Build result record
-  script += '    set areaRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of a) & "\\","';
-  script += ' & "\\"name\\":\\"" & (name of a) & "\\","';
-  script += ' & "\\"visible\\":true"'; // Always true since we can't filter
-  script += ' & "}"\n';
-  script += '    set end of results to areaRecord\n';
+  // Build result using NSMutableDictionary
+  script += '    set areaDict to current application\'s NSMutableDictionary\'s dictionary()\n';
+  script += '    areaDict\'s setObject:(id of a) forKey:"id"\n';
+  script += '    areaDict\'s setObject:(name of a) forKey:"name"\n';
+  script += '    areaDict\'s setObject:true forKey:"visible"\n'; // Always true since we can't filter
+  script += '    resultArray\'s addObject:areaDict\n';
   
   script += '  end repeat\n';
-  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
-  script += 'end tell\n\n';
-  
-  // Add helper function for joining lists
-  script += 'on joinList(lst, delim)\n';
-  script += '  set AppleScript\'s text item delimiters to delim\n';
-  script += '  set txt to lst as text\n';
-  script += '  set AppleScript\'s text item delimiters to ""\n';
-  script += '  return txt\n';
-  script += 'end joinList';
+  script += '  \n';
+  script += '  -- Convert to JSON\n';
+  script += '  set jsonData to current application\'s NSJSONSerialization\'s dataWithJSONObject:resultArray options:0 |error|:(missing value)\n';
+  script += '  if jsonData is missing value then\n';
+  script += '    return "[]"\n';
+  script += '  else\n';
+  script += '    set jsonString to current application\'s NSString\'s alloc()\'s initWithData:jsonData encoding:(current application\'s NSUTF8StringEncoding)\n';
+  script += '    return jsonString as text\n';
+  script += '  end if\n';
+  script += 'end tell';
   
   return script;
 }
@@ -847,36 +854,39 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
  * Generate AppleScript to list tags
  */
 export function listTags(): string {
-  let script = 'tell application "Things3"\n';
+  let script = `use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
+tell application "Things3"\n`;
   script += '  set tagList to tags\n';
-  script += '  set results to {}\n';
+  script += '  set resultArray to current application\'s NSMutableArray\'s array()\n';
   script += '  repeat with t in tagList\n';
   
-  // Build result record
+  // Build result using NSMutableDictionary
+  script += '    set tagDict to current application\'s NSMutableDictionary\'s dictionary()\n';
+  script += '    tagDict\'s setObject:(id of t) forKey:"id"\n';
+  script += '    tagDict\'s setObject:(name of t) forKey:"name"\n';
+  script += '    \n';
+  script += '    -- Handle optional parent tag\n';
   script += '    set parentRef to parent tag of t\n';
-  script += '    if parentRef is missing value then\n';
-  script += '      set parentIdStr to "null"\n';
-  script += '    else\n';
-  script += '      set parentIdStr to "\\"" & (id of parentRef) & "\\""\n';
+  script += '    if parentRef is not missing value then\n';
+  script += '      tagDict\'s setObject:(id of parentRef) forKey:"parentTagId"\n';
   script += '    end if\n';
-  script += '    set tagRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
-  script += ' & "\\"name\\":\\"" & (name of t) & "\\","';
-  script += ' & "\\"parentTagId\\":" & parentIdStr';
-  script += ' & "}"\n';
-  script += '    set end of results to tagRecord\n';
+  script += '    \n';
+  script += '    resultArray\'s addObject:tagDict\n';
   
   script += '  end repeat\n';
-  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
-  script += 'end tell\n\n';
-  
-  // Add helper function for joining lists
-  script += 'on joinList(lst, delim)\n';
-  script += '  set AppleScript\'s text item delimiters to delim\n';
-  script += '  set txt to lst as text\n';
-  script += '  set AppleScript\'s text item delimiters to ""\n';
-  script += '  return txt\n';
-  script += 'end joinList';
+  script += '  \n';
+  script += '  -- Convert to JSON\n';
+  script += '  set jsonData to current application\'s NSJSONSerialization\'s dataWithJSONObject:resultArray options:0 |error|:(missing value)\n';
+  script += '  if jsonData is missing value then\n';
+  script += '    return "[]"\n';
+  script += '  else\n';
+  script += '    set jsonString to current application\'s NSString\'s alloc()\'s initWithData:jsonData encoding:(current application\'s NSUTF8StringEncoding)\n';
+  script += '    return jsonString as text\n';
+  script += '  end if\n';
+  script += 'end tell';
   
   return script;
 }
@@ -979,9 +989,13 @@ export function searchLogbook(
   toDate?: string,
   limit?: number
 ): string {
-  let script = 'tell application "Things3"\n';
+  let script = `use AppleScript version "2.4"
+use framework "Foundation"
+use scripting additions
+
+tell application "Things3"\n`;
   script += '  set logbookItems to to dos of list "Logbook"\n';
-  script += '  set results to {}\n';
+  script += '  set resultArray to current application\'s NSMutableArray\'s array()\n';
   script += '  set resultCount to 0\n';
   const maxResults = limit || 100;
   
@@ -1007,28 +1021,27 @@ export function searchLogbook(
   
   script += '      if shouldInclude then\n';
   
-  // Build result record without inline conditionals
-  script += '        set todoRecord to "{"';
-  script += ' & "\\"id\\":\\"" & (id of t) & "\\","';
-  script += ' & "\\"title\\":\\"" & (name of t) & "\\","';
-  script += ' & "\\"completed\\":true"';
-  script += ' & "}"\n';
-  script += '        set end of results to todoRecord\n';
+  // Build result using NSMutableDictionary
+  script += '        set todoDict to current application\'s NSMutableDictionary\'s dictionary()\n';
+  script += '        todoDict\'s setObject:(id of t) forKey:"id"\n';
+  script += '        todoDict\'s setObject:(name of t) forKey:"title"\n';
+  script += '        todoDict\'s setObject:true forKey:"completed"\n';
+  script += '        resultArray\'s addObject:todoDict\n';
   script += '        set resultCount to resultCount + 1\n';
   script += '      end if\n';
   
   script += '    end if\n';
   script += '  end repeat\n';
-  script += '  return "[" & (my joinList(results, ",")) & "]"\n';
-  script += 'end tell\n\n';
-  
-  // Add helper function for joining lists
-  script += 'on joinList(lst, delim)\n';
-  script += '  set AppleScript\'s text item delimiters to delim\n';
-  script += '  set txt to lst as text\n';
-  script += '  set AppleScript\'s text item delimiters to ""\n';
-  script += '  return txt\n';
-  script += 'end joinList';
+  script += '  \n';
+  script += '  -- Convert to JSON\n';
+  script += '  set jsonData to current application\'s NSJSONSerialization\'s dataWithJSONObject:resultArray options:0 |error|:(missing value)\n';
+  script += '  if jsonData is missing value then\n';
+  script += '    return "[]"\n';
+  script += '  else\n';
+  script += '    set jsonString to current application\'s NSString\'s alloc()\'s initWithData:jsonData encoding:(current application\'s NSUTF8StringEncoding)\n';
+  script += '    return jsonString as text\n';
+  script += '  end if\n';
+  script += 'end tell';
   
   return script;
 }
