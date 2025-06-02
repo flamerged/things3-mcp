@@ -1,10 +1,8 @@
 // ABOUTME: Area management tools for Things3 integration
-// ABOUTME: Provides list and create operations for areas with caching
+// ABOUTME: Provides list and create operations for areas
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { CacheAwareBase } from './cache-aware-base.js';
 import { 
-  AreasListParams, 
   AreasCreateParams,
   AreasCreateResult,
   Area
@@ -12,37 +10,23 @@ import {
 import { listAreas, createArea } from '../templates/applescript-templates.js';
 import { AppleScriptBridge } from '../utils/applescript.js';
 
-export class AreaTools extends CacheAwareBase {
-  private static readonly CACHE_KEY = 'areas:list';
-  private static readonly CACHE_TTL = 300000; // 5 minutes
+export class AreaTools {
   private bridge: AppleScriptBridge;
   
   constructor() {
-    super();
     this.bridge = new AppleScriptBridge();
   }
 
   /**
    * List all areas with optional filtering
    */
-  async listAreas(params: AreasListParams): Promise<{ areas: Area[] }> {
-    const cacheKey = `${AreaTools.CACHE_KEY}:${params.includeHidden || false}`;
-    
-    // Try to get from cache
-    const cached = this.cacheManager.get<Area[]>(cacheKey);
-    if (cached) {
-      return { areas: cached };
-    }
-
+  async listAreas(): Promise<{ areas: Area[] }> {
     // Generate and execute AppleScript
     const script = listAreas();
     const result = await this.bridge.execute(script);
     
     // Parse the JSON response
     const areas: Area[] = JSON.parse(result);
-    
-    // Cache the results
-    this.cacheManager.set(cacheKey, areas, AreaTools.CACHE_TTL);
     
     return { areas };
   }
@@ -54,8 +38,6 @@ export class AreaTools extends CacheAwareBase {
     const script = createArea(params.name);
     const id = await this.bridge.execute(script);
     
-    // Invalidate cache since we've added a new area
-    this.cacheManager.invalidatePattern(`${AreaTools.CACHE_KEY}*`);
     
     return { id, success: true };
   }
@@ -77,7 +59,7 @@ export class AreaTools extends CacheAwareBase {
             }
           }
         },
-        handler: async (params: unknown) => areaTools.listAreas(params as AreasListParams)
+        handler: async () => areaTools.listAreas()
       },
       {
         name: 'areas_create',

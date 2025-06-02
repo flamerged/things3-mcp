@@ -8,7 +8,7 @@ import type {
   TodosListParams, TodosGetParams, TodosCreateParams, TodosUpdateParams, 
   TodosCompleteParams, TodosUncompleteParams, TodosDeleteParams,
   ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams,
-  AreasListParams, AreasCreateParams,
+  AreasCreateParams,
   TagsCreateParams, TagsAddParams, TagsRemoveParams,
   BulkMoveParams, BulkUpdateDatesParams,
   LogbookSearchParams
@@ -126,7 +126,7 @@ export class Things3Server {
         
         // Area tools
         case 'areas_list':
-          return { toolResult: await this.areaTools.listAreas(args as unknown as AreasListParams) };
+          return { toolResult: await this.areaTools.listAreas() };
         case 'areas_create':
           return { toolResult: await this.areaTools.createArea(args as unknown as AreasCreateParams) };
         
@@ -151,8 +151,6 @@ export class Things3Server {
           return { toolResult: await this.logbookTools.search(args as unknown as LogbookSearchParams) };
         
         // System tools
-        case 'system_refresh':
-          return { toolResult: await this.systemTools.refresh() };
         case 'system_launch':
           return { toolResult: await this.systemTools.launch() };
         
@@ -178,4 +176,5 @@ export class Things3Server {
   async stop(): Promise<void> {
     await this.server.close();
   }
+
 }

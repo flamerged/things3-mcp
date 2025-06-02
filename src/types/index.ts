@@ -33,14 +33,6 @@ export class Things3Error extends Error {
   }
 }
 
-/**
- * Cache keys used throughout the application
- */
-export enum CacheKey {
-  PROJECTS = 'projects',
-  AREAS = 'areas',
-  TAGS = 'tags',
-}
 
 /**
  * Configuration options for the server

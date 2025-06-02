@@ -8,11 +8,6 @@ import * as fs from 'fs';
 // Load environment variables
 dotenvConfig();
 
-interface CacheConfig {
-  projects: { ttl: number };
-  areas: { ttl: number };
-  tags: { ttl: number };
-}
 
 interface PoolConfig {
   minSize: number;
@@ -45,9 +40,6 @@ export interface Config {
     name: string;
     version: string;
   };
-  
-  // Cache settings
-  cache: CacheConfig;
   
   // Connection pool settings
   pool: PoolConfig;
@@ -128,17 +120,6 @@ export function loadConfig(): Config {
       version: getVersion()
     },
     
-    cache: {
-      projects: {
-        ttl: parseInt(env['CACHE_PROJECTS_TTL'], 300000) // 5 minutes
-      },
-      areas: {
-        ttl: parseInt(env['CACHE_AREAS_TTL'], 300000) // 5 minutes
-      },
-      tags: {
-        ttl: parseInt(env['CACHE_TAGS_TTL'], 300000) // 5 minutes
-      }
-    },
     
     pool: {
       minSize: parseInt(env['POOL_MIN_SIZE'], 2),
@@ -194,15 +175,6 @@ export function validateConfig(config: Config): void {
     throw new Error('Pool sizes must be positive');
   }
   
-  // Validate cache TTLs
-  const minTTL = 1000; // 1 second
-  const maxTTL = 3600000; // 1 hour
-  
-  for (const [key, { ttl }] of Object.entries(config.cache)) {
-    if (ttl < minTTL || ttl > maxTTL) {
-      throw new Error(`Cache TTL for ${key} must be between ${minTTL}ms and ${maxTTL}ms`);
-    }
-  }
   
   // Validate retry settings
   if (config.retry.maxAttempts < 1) {

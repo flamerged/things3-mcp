@@ -1,8 +1,7 @@
 // ABOUTME: Project management tools for Things3 integration
-// ABOUTME: Provides list, get, create, update, and complete operations with caching
+// ABOUTME: Provides list, get, create, update, and complete operations
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { CacheAwareBase } from './cache-aware-base.js';
 import { 
   ProjectsListParams, 
   ProjectsGetParams,
@@ -19,13 +18,10 @@ import {
 import { AppleScriptBridge } from '../utils/applescript.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
 
-export class ProjectTools extends CacheAwareBase {
-  private static readonly CACHE_KEY = 'projects:list';
-  private static readonly CACHE_TTL = 300000; // 5 minutes
+export class ProjectTools {
   private bridge: AppleScriptBridge;
   
   constructor() {
-    super();
     this.bridge = new AppleScriptBridge();
   }
 
@@ -33,23 +29,12 @@ export class ProjectTools extends CacheAwareBase {
    * List all projects with optional filtering
    */
   async listProjects(params: ProjectsListParams): Promise<{ projects: Project[] }> {
-    const cacheKey = `${ProjectTools.CACHE_KEY}:${params.areaId || 'all'}:${params.includeCompleted || false}`;
-    
-    // Try to get from cache
-    const cached = this.cacheManager.get<Project[]>(cacheKey);
-    if (cached) {
-      return { projects: cached };
-    }
-
     // Generate and execute AppleScript
     const script = listProjects(params.areaId, params.includeCompleted);
     const result = await this.bridge.execute(script);
     
     // Parse the JSON response
     const projects: Project[] = JSON.parse(result);
-    
-    // Cache the results
-    this.cacheManager.set(cacheKey, projects, ProjectTools.CACHE_TTL);
     
     return { projects };
   }
@@ -86,9 +71,6 @@ export class ProjectTools extends CacheAwareBase {
     if (params.headings) createParams.headings = params.headings;
     
     await urlSchemeHandler.createProject(createParams);
-    
-    // Invalidate cache since we've added a new project
-    this.cacheManager.invalidatePattern(ProjectTools.CACHE_KEY);
     
     // Since URL scheme doesn't return ID, we need to find the created project
     // Wait a moment for Things3 to process the creation
@@ -127,8 +109,6 @@ export class ProjectTools extends CacheAwareBase {
     
     await urlSchemeHandler.updateProject(params.id, updateParams);
     
-    // Invalidate cache since we've modified a project
-    this.cacheManager.invalidatePattern(ProjectTools.CACHE_KEY);
     
     return { success: true };
   }
@@ -140,8 +120,6 @@ export class ProjectTools extends CacheAwareBase {
     // Use URL scheme for completing projects
     await urlSchemeHandler.completeProject(params.id);
     
-    // Invalidate cache since we've modified a project
-    this.cacheManager.invalidatePattern(ProjectTools.CACHE_KEY);
     
     return { success: true };
   }

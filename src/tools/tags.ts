@@ -2,7 +2,6 @@
 // ABOUTME: Provides list, create, add, and remove operations with hierarchy support
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { CacheAwareBase } from './cache-aware-base.js';
 import { 
   TagsCreateParams,
   TagsCreateResult,
@@ -24,13 +23,10 @@ import {
 import { AppleScriptBridge } from '../utils/applescript.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
 
-export class TagTools extends CacheAwareBase {
-  private static readonly CACHE_KEY = 'tags:list';
-  private static readonly CACHE_TTL = 300000; // 5 minutes
+export class TagTools {
   private bridge: AppleScriptBridge;
 
   constructor() {
-    super();
     this.bridge = new AppleScriptBridge();
   }
 
@@ -38,21 +34,12 @@ export class TagTools extends CacheAwareBase {
    * List all tags with hierarchy information
    */
   async listTags(): Promise<{ tags: Tag[] }> {
-    // Try to get from cache
-    const cached = this.cacheManager.get<Tag[]>(TagTools.CACHE_KEY);
-    if (cached) {
-      return { tags: cached };
-    }
-
     // Generate and execute AppleScript
     const script = listTags();
     const result = await this.bridge.execute(script);
     
     // Parse the JSON response
     const tags: Tag[] = JSON.parse(result);
-    
-    // Cache the results
-    this.cacheManager.set(TagTools.CACHE_KEY, tags, TagTools.CACHE_TTL);
     
     return { tags };
   }
@@ -76,8 +63,6 @@ export class TagTools extends CacheAwareBase {
     try {
       const id = await this.bridge.execute(script);
       
-      // Invalidate cache since we've added a new tag
-      this.cacheManager.invalidate(TagTools.CACHE_KEY);
       
       return { id, success: true };
     } catch (error) {
@@ -106,6 +91,7 @@ export class TagTools extends CacheAwareBase {
     try {
       // Use URL scheme for write operations
       await urlSchemeHandler.addTagsToItems(params.itemIds, cleanedTags);
+      
       
       // Since URL scheme doesn't return count, assume all items were updated
       return { 
@@ -142,6 +128,7 @@ export class TagTools extends CacheAwareBase {
     try {
       const result = await this.bridge.execute(script);
       const updatedCount = parseInt(result, 10) || 0;
+      
       
       return { 
         success: true, 
