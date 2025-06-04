@@ -7,9 +7,9 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import type { 
   TodosListParams, TodosGetParams, TodosCreateParams, TodosUpdateParams, 
   TodosCompleteParams, TodosUncompleteParams, TodosDeleteParams,
-  ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams,
-  AreasCreateParams,
-  TagsCreateParams, TagsAddParams, TagsRemoveParams,
+  ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams, ProjectsDeleteParams,
+  AreasCreateParams, AreasDeleteParams,
+  TagsCreateParams, TagsAddParams, TagsRemoveParams, TagsDeleteParams,
   BulkMoveParams, BulkUpdateDatesParams,
   LogbookSearchParams
 } from './types/tools.js';
@@ -123,12 +123,16 @@ export class Things3Server {
           return { toolResult: await this.projectTools.updateProject(args as unknown as ProjectsUpdateParams) };
         case 'projects_complete':
           return { toolResult: await this.projectTools.completeProject(args as unknown as ProjectsCompleteParams) };
+        case 'projects_delete':
+          return { toolResult: await this.projectTools.deleteProjects(args as unknown as ProjectsDeleteParams) };
         
         // Area tools
         case 'areas_list':
           return { toolResult: await this.areaTools.listAreas() };
         case 'areas_create':
           return { toolResult: await this.areaTools.createArea(args as unknown as AreasCreateParams) };
+        case 'areas_delete':
+          return { toolResult: await this.areaTools.deleteAreas(args as unknown as AreasDeleteParams) };
         
         // Tag tools
         case 'tags_list':
@@ -139,6 +143,8 @@ export class Things3Server {
           return { toolResult: await this.tagTools.addTags(args as unknown as TagsAddParams) };
         case 'tags_remove':
           return { toolResult: await this.tagTools.removeTags(args as unknown as TagsRemoveParams) };
+        case 'tags_delete':
+          return { toolResult: await this.tagTools.deleteTags(args as unknown as TagsDeleteParams) };
         
         // Bulk tools
         case 'bulk_move':

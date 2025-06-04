@@ -3,16 +3,16 @@
 [![Test](https://github.com/urbanogardun/things3-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/urbanogardun/things3-mcp/actions/workflows/test.yml)
 [![npm version](https://badge.fury.io/js/things3-mcp.svg)](https://badge.fury.io/js/things3-mcp)
 
-A powerful MCP (Model Context Protocol) server that provides comprehensive integration with Things3 on macOS. This server enables AI assistants and other MCP clients to interact with Things3 through 23 specialized tools, offering complete task management capabilities with intelligent caching and error correction.
+An MCP (Model Context Protocol) server that provides comprehensive integration with Things3 on macOS. This server enables AI assistants and other MCP clients to interact with Things3 through 25 specialized tools, offering complete task management capabilities with intelligent error correction and automatic tag creation.
 
 ## Features
 
-- **Complete Things3 Integration**: 23 tools covering all aspects of Things3
+- **Complete Things3 Integration**: 25 tools covering all aspects of Things3
 - **TODO Management**: Create, read, update, delete, complete, and uncomplete tasks
-- **Project & Area Management**: Full project lifecycle support with area organization
-- **Tag System**: Hierarchical tag support with bulk tag operations
+- **Project & Area Management**: Full project lifecycle support with area organization and deletion
+- **Tag System**: Hierarchical tag support with creation, deletion, and bulk tag operations
 - **Bulk Operations**: Efficiently move or update multiple items at once
-- **Smart Caching**: 5-minute TTL caching for projects, areas, and tags
+- **Automatic Tag Creation**: Tags are automatically created when referenced in TODO/project operations
 - **Error Correction**: Automatic fixing of common issues (date conflicts, missing titles)
 - **Logbook Search**: Search completed items with date range filtering
 - **Performance Optimized**: Connection pooling and AppleScript optimization
@@ -170,7 +170,7 @@ Get detailed information about a specific TODO.
 - `id`: The TODO's unique identifier (required)
 
 #### `todos_create`
-Create a new TODO with full property support.
+Create a new TODO with full property support (automatically creates tags if they don't exist).
 
 **Parameters:**
 - `title`: Task title (required)
@@ -181,6 +181,7 @@ Create a new TODO with full property support.
 - `checklistItems`: Array of checklist item titles (optional) *
 - `projectId`: Assign to project (optional)
 - `areaId`: Assign to area (optional)
+- `heading`: Title of heading within project to add to (optional)
 
 **Example:**
 ```json
@@ -202,7 +203,7 @@ Create a new TODO with full property support.
 - URL scheme support must be enabled in Things3 settings (Settings → General → Enable Things URLs)
 
 #### `todos_update`
-Update an existing TODO's properties.
+Update an existing TODO's properties (automatically creates tags if they don't exist).
 
 **Parameters:**
 - `id`: TODO identifier (required)
@@ -226,7 +227,7 @@ Delete one or more TODOs permanently.
 **Parameters:**
 - `ids`: Single ID or array of IDs (required)
 
-### Project Tools (5)
+### Project Tools (6)
 
 #### `projects_list`
 List projects with optional filtering.
@@ -242,7 +243,7 @@ Get detailed project information.
 - `id`: Project identifier (required)
 
 #### `projects_create`
-Create a new project.
+Create a new project (automatically creates tags if they don't exist).
 
 **Parameters:**
 - `name`: Project name (required)
@@ -254,7 +255,7 @@ Create a new project.
 - `headings`: Array of section headings (optional)
 
 #### `projects_update`
-Update project properties.
+Update project properties (automatically creates tags if they don't exist).
 
 **Parameters:**
 - `id`: Project identifier (required)
@@ -266,7 +267,13 @@ Mark a project as complete.
 **Parameters:**
 - `id`: Project identifier (required)
 
-### Area Tools (2)
+#### `projects_delete`
+Delete projects completely from Things3.
+
+**Parameters:**
+- `ids`: Single project ID or array of project IDs (required)
+
+### Area Tools (3)
 
 #### `areas_list`
 List all areas.
@@ -280,7 +287,13 @@ Create a new area.
 **Parameters:**
 - `name`: Area name (required)
 
-### Tag Tools (4)
+#### `areas_delete`
+Delete areas completely from Things3.
+
+**Parameters:**
+- `ids`: Single area ID or array of area IDs (required)
+
+### Tag Tools (5)
 
 #### `tags_list`
 List all tags with hierarchy information.
@@ -295,7 +308,7 @@ Create a new tag.
 - `parentTagId`: Parent tag for nesting (optional)
 
 #### `tags_add`
-Add tags to items.
+Add tags to items (automatically creates tags if they don't exist).
 
 **Parameters:**
 - `itemIds`: Single ID or array of TODO/Project IDs (required)
@@ -307,6 +320,12 @@ Remove tags from items.
 **Parameters:**
 - `itemIds`: Single ID or array of TODO/Project IDs (required)
 - `tags`: Array of tag names to remove (required)
+
+#### `tags_delete`
+Delete tags completely from Things3.
+
+**Parameters:**
+- `names`: Single tag name or array of tag names (required)
 
 ### Bulk Tools (2)
 
@@ -337,10 +356,7 @@ Search completed items in the logbook.
 - `toDate`: End date for range (optional)
 - `limit`: Maximum results (optional, default: 50)
 
-### System Tools (2)
-
-#### `system_refresh`
-Manually refresh all caches.
+### System Tools (1)
 
 #### `system_launch`
 Ensure Things3 is running and ready.
@@ -470,9 +486,8 @@ things3-mcp/
 - If dates appear incorrect, check your system's date format settings
 
 ### Performance Issues
-- The server caches projects, areas, and tags for 5 minutes
-- Use `system_refresh` to manually clear caches if needed
 - For large operations, use bulk tools instead of individual operations
+- Tag operations automatically create missing tags, which may slow down initial operations
 
 ## Known Limitations
 
@@ -481,9 +496,9 @@ things3-mcp/
    - We use URL schemes as a workaround when creating TODOs with checklists
    - This may cause Things3 to briefly come to the foreground
    - Existing checklist items cannot be modified after creation
-2. **Project Deletion**: Projects cannot be deleted via AppleScript, only completed
+2. **Deleted Items Recovery**: Deleted items cannot be recovered via the API
 3. **Reminder Details**: Limited reminder information available through AppleScript
-4. **Tag Hierarchy**: Tag parent-child relationships are read-only
+4. **Tag Hierarchy**: Tag parent-child relationships are read-only (but tags can be created and deleted)
 5. **URL Scheme Limitations**: 
    - When using URL schemes (for checklists), the newly created TODO's ID cannot be directly retrieved
    - The server performs a search to find the created TODO, which may fail if multiple TODOs have identical titles
