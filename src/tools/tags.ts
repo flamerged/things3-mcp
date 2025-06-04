@@ -22,9 +22,11 @@ import {
   cleanTags
 } from '../utils/tag-validator.js';
 import { AppleScriptBridge } from '../utils/applescript.js';
+import { createLogger } from '../utils/logger.js';
 
 export class TagTools {
   private bridge: AppleScriptBridge;
+  private logger = createLogger('tags');
 
   constructor() {
     this.bridge = new AppleScriptBridge();
@@ -86,6 +88,28 @@ export class TagTools {
         updatedCount: 0,
         error: 'No valid tags to add'
       };
+    }
+
+    // Ensure all tags exist before adding them
+    try {
+      const existingTagsResult = await this.listTags();
+      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
+      
+      // Find missing tags and create them
+      const missingTags = cleanedTags.filter(tag => !existingTagNames.has(tag));
+      
+      if (missingTags.length > 0) {
+        this.logger.info(`Creating ${missingTags.length} missing tags before adding: ${missingTags.join(', ')}`);
+        
+        // Create missing tags
+        for (const tagName of missingTags) {
+          await this.createTag({ name: tagName });
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to ensure tags exist, continuing with add operation', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
 
     try {

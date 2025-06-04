@@ -25,6 +25,7 @@ import * as templates from '../templates/applescript-templates.js';
 import { ErrorCorrector } from '../utils/error-correction.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
 import { createLogger } from '../utils/logger.js';
+import { TagTools } from './tags.js';
 
 /**
  * Handles all TODO-related operations
@@ -32,11 +33,42 @@ import { createLogger } from '../utils/logger.js';
 export class TodosTools {
   private bridge: AppleScriptBridge;
   private errorCorrector: ErrorCorrector;
+  private tagTools: TagTools;
   private logger = createLogger('todos');
 
   constructor() {
     this.bridge = new AppleScriptBridge();
     this.errorCorrector = new ErrorCorrector();
+    this.tagTools = new TagTools();
+  }
+
+  /**
+   * Ensure tags exist in Things3, creating them if necessary
+   */
+  private async ensureTagsExist(tags: string[]): Promise<void> {
+    if (!tags || tags.length === 0) return;
+    
+    try {
+      // Get existing tags
+      const existingTagsResult = await this.tagTools.listTags();
+      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
+      
+      // Find missing tags
+      const missingTags = tags.filter(tag => !existingTagNames.has(tag));
+      
+      if (missingTags.length > 0) {
+        this.logger.info(`Creating ${missingTags.length} missing tags: ${missingTags.join(', ')}`);
+        
+        // Create missing tags
+        for (const tagName of missingTags) {
+          await this.tagTools.createTag({ name: tagName });
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to ensure tags exist, continuing with TODO creation', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
   }
 
   /**
@@ -151,6 +183,11 @@ export class TodosTools {
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
         this.errorCorrector.logCorrections(correctionReport);
+      }
+      
+      // Ensure tags exist before creating the TODO
+      if (correctedParams.tags && correctedParams.tags.length > 0) {
+        await this.ensureTagsExist(correctedParams.tags);
       }
       
       // Always use URL scheme for creating TODOs (now supports checklist items directly)
@@ -273,6 +310,11 @@ export class TodosTools {
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
         this.errorCorrector.logCorrections(correctionReport);
+      }
+      
+      // Ensure tags exist before updating the TODO
+      if (correctedParams.tags && correctedParams.tags.length > 0) {
+        await this.ensureTagsExist(correctedParams.tags);
       }
       
       // Use URL scheme for updating TODOs
