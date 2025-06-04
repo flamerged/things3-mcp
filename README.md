@@ -28,14 +28,17 @@ An MCP (Model Context Protocol) server that provides comprehensive integration w
 
 ### Quick Start (Recommended)
 
-Once published to npm, you can use the server without any installation:
+You can use the server without any installation:
 
 ```json
 {
   "mcpServers": {
     "things3": {
       "command": "npx",
-      "args": ["things3-mcp@latest"]
+      "args": ["things3-mcp@latest"],
+      "env": {
+        "THINGS3_AUTH_TOKEN": "your_auth_token_here"
+      }
     }
   }
 }
@@ -53,7 +56,10 @@ Then add to your MCP client configuration:
 {
   "mcpServers": {
     "things3": {
-      "command": "things3-mcp"
+      "command": "things3-mcp",
+      "env": {
+        "THINGS3_AUTH_TOKEN": "your_auth_token_here"
+      }
     }
   }
 }
@@ -86,8 +92,9 @@ export THINGS3_AUTH_TOKEN="your_auth_token_here"
 To find your authorization token:
 1. Open Things3
 2. Go to Settings → General
-3. Look for "Authorization Token" section
-4. Copy the token value
+3. Click "Enable Things URLs"
+4. Click "Manage"
+5. Copy the authorization token value
 
 You can also create a `.env` file (see `.env.example`).
 
