@@ -1086,6 +1086,50 @@ return "running"`;
 }
 
 /**
+ * Generate AppleScript to delete areas
+ */
+export function deleteAreas(ids: string[]): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set deletedCount to 0\n';
+  
+  for (const id of ids) {
+    const escapedId = bridge.escapeString(id);
+    script += '  try\n';
+    script += `    set a to area id "${escapedId}"\n`;
+    script += '    delete a\n';
+    script += '    set deletedCount to deletedCount + 1\n';
+    script += '  end try\n';
+  }
+  
+  script += '  return deletedCount\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
+ * Generate AppleScript to delete projects
+ */
+export function deleteProjects(ids: string[]): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set deletedCount to 0\n';
+  
+  for (const id of ids) {
+    const escapedId = bridge.escapeString(id);
+    script += '  try\n';
+    script += `    set p to project id "${escapedId}"\n`;
+    script += '    delete p\n';
+    script += '    set deletedCount to deletedCount + 1\n';
+    script += '  end try\n';
+  }
+  
+  script += '  return deletedCount\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
  * Generate AppleScript to get Things3 version
  */
 export function getThings3Version(): string {

@@ -192,6 +192,20 @@ export interface ProjectsCreateResult extends OperationResult {
 }
 
 /**
+ * Parameters for projects.delete tool
+ */
+export interface ProjectsDeleteParams {
+  ids: string | string[];
+}
+
+/**
+ * Return type for projects.delete tool
+ */
+export interface ProjectsDeleteResult extends OperationResult {
+  deletedCount: number;
+}
+
+/**
  * Parameters for projects.update tool
  */
 export interface ProjectsUpdateParams {
@@ -241,6 +255,20 @@ export interface AreasCreateParams {
  */
 export interface AreasCreateResult extends OperationResult {
   id?: string;
+}
+
+/**
+ * Parameters for areas.delete tool
+ */
+export interface AreasDeleteParams {
+  ids: string | string[];
+}
+
+/**
+ * Return type for areas.delete tool
+ */
+export interface AreasDeleteResult extends OperationResult {
+  deletedCount: number;
 }
 
 // ========== Tag Management Tools ==========

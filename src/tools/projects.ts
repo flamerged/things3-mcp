@@ -9,11 +9,14 @@ import {
   ProjectsCreateResult,
   ProjectsUpdateParams,
   ProjectsCompleteParams,
+  ProjectsDeleteParams,
+  ProjectsDeleteResult,
   Project
 } from '../types/index.js';
 import { 
   listProjects, 
-  getProjectById
+  getProjectById,
+  deleteProjects
 } from '../templates/applescript-templates.js';
 import { AppleScriptBridge } from '../utils/applescript.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
@@ -122,6 +125,32 @@ export class ProjectTools {
     
     
     return { success: true };
+  }
+
+  /**
+   * Delete projects
+   */
+  async deleteProjects(params: ProjectsDeleteParams): Promise<ProjectsDeleteResult> {
+    try {
+      const ids = Array.isArray(params.ids) ? params.ids : [params.ids];
+      
+      // Use AppleScript for actual deletion
+      const script = deleteProjects(ids);
+      const result = await this.bridge.execute(script);
+      
+      const deletedCount = parseInt(result.trim()) || 0;
+      
+      return {
+        success: deletedCount > 0,
+        deletedCount: deletedCount,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        deletedCount: 0,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
   }
 
   /**
@@ -257,6 +286,24 @@ export class ProjectTools {
           required: ['id']
         },
         handler: async (params: unknown) => projectTools.completeProject(params as ProjectsCompleteParams)
+      },
+      {
+        name: 'projects_delete',
+        description: 'Delete projects in Things3 (moves to trash)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            ids: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' } }
+              ],
+              description: 'Project ID or array of project IDs to delete'
+            }
+          },
+          required: ['ids']
+        },
+        handler: async (params: unknown) => projectTools.deleteProjects(params as ProjectsDeleteParams)
       }
     ];
   }
