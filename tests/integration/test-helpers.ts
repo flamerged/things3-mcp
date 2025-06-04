@@ -70,21 +70,21 @@ export class TestResourceTracker {
       }
     }
 
-    // Complete all tracked projects (can't delete in Things3)
-    for (const projectId of this.projectIds) {
+    // Delete all tracked projects
+    if (this.projectIds.size > 0) {
       try {
-        await this.server.projectTools.completeProject({ id: projectId });
+        const projectIdsArray = Array.from(this.projectIds);
+        const result = await this.server.projectTools.deleteProjects({ ids: projectIdsArray });
+        console.log(`      Deleted ${result.deletedCount} projects...`);
       } catch (error) {
-        errors.push(new Error(`Failed to complete project ${projectId}: ${error}`));
+        errors.push(new Error(`Failed to delete projects: ${error}`));
       }
     }
     this.projectIds.clear();
 
-    // Clean up areas by searching and deleting test TODOs in them
-    // Note: We can't delete areas in Things3, but we can clean their contents
+    // Delete all tracked areas (now possible with AppleScript!)
     if (this.areaNames.size > 0) {
       try {
-        const allTodos = await this.server.todosTools.listTodos({ limit: 1000 });
         const testAreaNames = Array.from(this.areaNames);
         
         // Find all areas to get their IDs
@@ -92,21 +92,14 @@ export class TestResourceTracker {
         const testAreas = areas.areas.filter(area => 
           testAreaNames.includes(area.name)
         );
-
-        // Find TODOs in test areas - need to get full details
-        const todosInTestAreas: string[] = [];
-        for (const todo of allTodos) {
-          const fullTodo = await this.server.todosTools.getTodo({ id: todo.id });
-          if (fullTodo && testAreas.some(area => area.id === fullTodo.areaId)) {
-            todosInTestAreas.push(todo.id);
-          }
-        }
-
-        if (todosInTestAreas.length > 0) {
-          await this.server.todosTools.deleteTodos({ ids: todosInTestAreas });
+        
+        if (testAreas.length > 0) {
+          const areaIds = testAreas.map(area => area.id);
+          const result = await this.server.areaTools.deleteAreas({ ids: areaIds });
+          console.log(`      Deleted ${result.deletedCount} areas...`);
         }
       } catch (error) {
-        errors.push(new Error(`Failed to clean up areas: ${error}`));
+        errors.push(new Error(`Failed to delete areas: ${error}`));
       }
     }
     this.areaNames.clear();

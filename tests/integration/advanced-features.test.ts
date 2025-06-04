@@ -87,11 +87,19 @@ describe('Advanced Features Integration Tests', () => {
 
   describe('Error Correction Features', () => {
     it('should correct date conflicts automatically', async () => {
-      // Create TODO with deadline before when date (conflict)
+      // Create dates dynamically to ensure they're always in the future
+      const now = new Date();
+      const laterDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      const earlierDate = new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000); // 25 days from now
+      
+      const whenDateStr = laterDate.toISOString().split('T')[0]!; // YYYY-MM-DD format
+      const deadlineStr = earlierDate.toISOString().split('T')[0]!; // YYYY-MM-DD format
+      
+      // Create TODO with deadline before when date (conflict) - using dynamic future dates
       const result = await env.server.todosTools.createTodo({
         title: 'TODO with date conflict',
-        whenDate: '2024-12-25',
-        deadline: '2024-12-20' // Deadline before when date
+        whenDate: whenDateStr, // 30 days from now
+        deadline: deadlineStr // 25 days from now (conflict: deadline before whenDate)
       });
       
       expect(result).toHaveProperty('id');
@@ -107,9 +115,20 @@ describe('Advanced Features Integration Tests', () => {
       // Verify the dates were swapped
       const todo = await env.server.todosTools.getTodo({ id: result.id });
       expect(todo).toBeDefined();
+      
       // The dates should be corrected (swapped)
-      expect(todo!.whenDate).toContain('20'); // Should contain the earlier date
-      expect(todo!.deadline).toContain('25'); // Should contain the later date
+      // After correction: whenDate should be the earlier date (25 days from now), deadline should be later (30 days from now)
+      
+      // More robust checking using month names and days
+      const earlierMonthName = earlierDate.toLocaleDateString('en-US', { month: 'long' });
+      const laterMonthName = laterDate.toLocaleDateString('en-US', { month: 'long' });
+      const earlierDay = earlierDate.getDate().toString();
+      const laterDay = laterDate.getDate().toString();
+      
+      expect(todo!.whenDate).toContain(earlierDay); // Should contain the earlier date (original deadline)
+      expect(todo!.whenDate).toContain(earlierMonthName); // Should contain the earlier month
+      expect(todo!.deadline).toContain(laterDay); // Should contain the later date (original whenDate)
+      expect(todo!.deadline).toContain(laterMonthName); // Should contain the later month
     });
 
     it('should generate title from notes when title is missing', async () => {

@@ -62,8 +62,8 @@ describe('Project and Area Operations Integration Tests', () => {
       
       console.log('Created area:', { name: areaName, id: result.id });
       
-      // Track for cleanup (note: areas can't be deleted via API)
-      env.tracker.trackArea(areaName);
+      // Track for cleanup using the area ID
+      env.tracker.trackArea(result.id!);
       
       // Verify area was created
       await waitForThings3(3000);

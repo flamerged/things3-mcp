@@ -53,8 +53,8 @@ export class EnhancedTestResourceTracker {
     this.projects.add(id);
   }
 
-  trackArea(name: string): void {
-    this.areas.add(name);
+  trackArea(id: string): void {
+    this.areas.add(id);
   }
 
   trackTag(name: string): void {
@@ -151,19 +151,35 @@ export class EnhancedTestResourceTracker {
       }
     }
 
-    // Note: Projects, areas, and tags don't have delete operations in Things3
-    // We'll track them but manual cleanup may be needed
+    // Delete projects
     if (this.projects.size > 0) {
-      console.log(`  🚨 Note: ${this.projects.size} test projects created - manual cleanup may be needed`);
-      console.log(`     Projects: ${Array.from(this.projects).join(', ')}`);
+      try {
+        const projectIds = Array.from(this.projects);
+        console.log(`  Deleting ${projectIds.length} projects...`);
+        const result = await this.server.projectTools.deleteProjects({ ids: projectIds });
+        cleaned += result.deletedCount;
+        this.projects.clear();
+      } catch (error) {
+        console.error('  ❌ Failed to delete some projects:', error);
+        console.log(`     Projects: ${Array.from(this.projects).join(', ')}`);
+        failed += this.projects.size;
+      }
     }
-    this.projects.clear();
 
+    // Delete areas
     if (this.areas.size > 0) {
-      console.log(`  🚨 Note: ${this.areas.size} test areas created - manual cleanup may be needed`);
-      console.log(`     Areas: ${Array.from(this.areas).join(', ')}`);
+      try {
+        const areaIds = Array.from(this.areas);
+        console.log(`  Deleting ${areaIds.length} areas...`);
+        const result = await this.server.areaTools.deleteAreas({ ids: areaIds });
+        cleaned += result.deletedCount;
+        this.areas.clear();
+      } catch (error) {
+        console.error('  ❌ Failed to delete some areas:', error);
+        console.log(`     Areas: ${Array.from(this.areas).join(', ')}`);
+        failed += this.areas.size;
+      }
     }
-    this.areas.clear();
 
     if (this.tags.size > 0) {
       console.log(`  🚨 Note: ${this.tags.size} test tags created - manual cleanup may be needed`);

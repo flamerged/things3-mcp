@@ -170,15 +170,35 @@ describe('Things3 Integration Tests', () => {
       expect(completeResult.success).toBe(true);
       expect(completeResult.completedCount).toBe(2);
 
-      // Delete both
+      // Try to delete completed TODOs (Things3 doesn't allow this)
       const deleteResult = await server.todosTools.deleteTodos({ 
         ids: [id1, id2] 
       });
-      expect(deleteResult.success).toBe(true);
-      expect(deleteResult.deletedCount).toBe(2);
+      
+      // Completed TODOs cannot be deleted in Things3 - they're in the logbook
+      expect(deleteResult.success).toBe(false);
+      expect(deleteResult.deletedCount).toBe(0);
 
-      // Verify deletion operation completed successfully
-      // Note: Things3 deletion behavior may vary, so we just verify the operation succeeded
+      // Verify TODOs are still accessible but completed
+      const todo1After = await server.todosTools.getTodo({ id: id1 });
+      const todo2After = await server.todosTools.getTodo({ id: id2 });
+      expect(todo1After?.completed).toBe(true);
+      expect(todo2After?.completed).toBe(true);
+      
+      // Test deletion of uncompleted TODOs
+      const todo3 = await server.todosTools.createTodo({ title: 'Bulk Test 3 (for deletion)' });
+      const todo4 = await server.todosTools.createTodo({ title: 'Bulk Test 4 (for deletion)' });
+      
+      tracker.trackTodo(todo3.id!);
+      tracker.trackTodo(todo4.id!);
+      
+      // Delete uncompleted TODOs (this should work)
+      const deleteUncompletedResult = await server.todosTools.deleteTodos({ 
+        ids: [todo3.id!, todo4.id!] 
+      });
+      
+      expect(deleteUncompletedResult.success).toBe(true);
+      expect(deleteUncompletedResult.deletedCount).toBe(2);
     });
   });
 });
