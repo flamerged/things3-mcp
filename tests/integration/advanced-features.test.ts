@@ -26,8 +26,13 @@ describe('Advanced Features Integration Tests', () => {
           title: `LogbookTest_${i}_${Date.now()}`,
           notes: `Test notes for logbook item ${i}`
         });
-        todoIds.push(result.id!);
-        env.tracker.trackTodo(result.id!);
+        
+        if (!result.id || result.id === 'unknown') {
+          throw new Error(`Failed to create logbook test TODO ${i} with valid ID`);
+        }
+        
+        todoIds.push(result.id);
+        env.tracker.trackTodo(result.id);
       }
       
       // Complete the TODOs to move them to logbook
@@ -93,10 +98,14 @@ describe('Advanced Features Integration Tests', () => {
       expect(result).toHaveProperty('correctionsMade');
       expect(result.correctionsMade?.some(c => c.includes('date_conflict'))).toBe(true);
       
-      env.tracker.trackTodo(result.id!);
+      if (!result.id || result.id === 'unknown') {
+        throw new Error('Failed to create TODO with date conflict correction');
+      }
+      
+      env.tracker.trackTodo(result.id);
       
       // Verify the dates were swapped
-      const todo = await env.server.todosTools.getTodo({ id: result.id! });
+      const todo = await env.server.todosTools.getTodo({ id: result.id });
       expect(todo).toBeDefined();
       // The dates should be corrected (swapped)
       expect(todo!.whenDate).toContain('20'); // Should contain the earlier date
@@ -114,10 +123,14 @@ describe('Advanced Features Integration Tests', () => {
       expect(result).toHaveProperty('correctionsMade');
       expect(result.correctionsMade?.some(c => c.includes('missing_title'))).toBe(true);
       
-      env.tracker.trackTodo(result.id!);
+      if (!result.id || result.id === 'unknown') {
+        throw new Error('Failed to create TODO with missing title correction');
+      }
+      
+      env.tracker.trackTodo(result.id);
       
       // Verify the title was generated from notes
-      const todo = await env.server.todosTools.getTodo({ id: result.id! });
+      const todo = await env.server.todosTools.getTodo({ id: result.id });
       expect(todo).toBeDefined();
       expect(todo!.title).toBe('This TODO has no title but has notes');
     });
@@ -133,10 +146,14 @@ describe('Advanced Features Integration Tests', () => {
       // Should succeed despite invalid project ID
       expect(result.success).toBe(true);
       
-      env.tracker.trackTodo(result.id!);
+      if (!result.id || result.id === 'unknown') {
+        throw new Error('Failed to create TODO with invalid project reference');
+      }
+      
+      env.tracker.trackTodo(result.id);
       
       // Verify the TODO was created (likely in inbox)
-      const todo = await env.server.todosTools.getTodo({ id: result.id! });
+      const todo = await env.server.todosTools.getTodo({ id: result.id });
       expect(todo).toBeDefined();
       expect(todo!.title).toBe('TODO with invalid project');
     });

@@ -785,60 +785,80 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
   let script = 'tell application "Things3"\n';
   script += '  set updatedCount to 0\n';
   
-  // Create a list of tags to remove
-  const tagsToRemove = tags.map(tag => `"${bridge.escapeString(tag)}"`).join(', ');
-  script += `  set tagsToRemove to {${tagsToRemove}}\n`;
-  
   for (const itemId of itemIds) {
     const escapedId = bridge.escapeString(itemId);
     script += '  try\n';
     // Try as a to do first
     script += `    set targetItem to to do id "${escapedId}"\n`;
     script += '    set currentTags to tag names of targetItem\n';
-    script += '    if currentTags is not missing value then\n';
-    script += '      set AppleScript\'s text item delimiters to ","\n';
-    script += '      set tagList to text items of currentTags\n';
-    script += '      set newTagList to {}\n';
-    script += '      repeat with tagName in tagList\n';
-    script += '        set tagName to (tagName as string)\n';
-    script += '        if tagName is not in tagsToRemove then\n';
-    script += '          set end of newTagList to tagName\n';
-    script += '        end if\n';
-    script += '      end repeat\n';
-    script += '      set AppleScript\'s text item delimiters to ","\n';
-    script += '      set newTags to newTagList as string\n';
-    script += '      set AppleScript\'s text item delimiters to ""\n';
-    script += '      if newTags is "" then\n';
-    script += '        set tag names of targetItem to missing value\n';
-    script += '      else\n';
-    script += '        set tag names of targetItem to newTags\n';
+    script += '    if currentTags is not missing value and currentTags is not "" then\n';
+    script += '      set hasChanges to false\n';
+    
+    // For each tag to remove, do simple string replacement
+    for (const tag of tags) {
+      const escapedTag = bridge.escapeString(tag);
+      script += `      -- Remove "${escapedTag}" from currentTags\n`;
+      script += `      if currentTags contains "${escapedTag}" then\n`;
+      script += `        set hasChanges to true\n`;
+      script += `        -- Try different patterns\n`;
+      script += `        if currentTags is equal to "${escapedTag}" then\n`;
+      script += `          -- Tag is the only one\n`;
+      script += `          set currentTags to ""\n`;
+      script += `        else if currentTags starts with "${escapedTag}, " then\n`;
+      script += `          -- Tag is at the beginning\n`;
+      script += `          set currentTags to text ${escapedTag.length + 3} thru -1 of currentTags\n`;
+      script += `        else if currentTags ends with ", ${escapedTag}" then\n`;
+      script += `          -- Tag is at the end\n`;
+      script += `          set currentTags to text 1 thru ${-(escapedTag.length + 3)} of currentTags\n`;
+      script += `        else\n`;
+      script += `          -- Tag is in the middle\n`;
+      script += `          set AppleScript's text item delimiters to ", ${escapedTag}, "\n`;
+      script += `          set tagParts to text items of currentTags\n`;
+      script += `          set AppleScript's text item delimiters to ", "\n`;
+      script += `          set currentTags to tagParts as string\n`;
+      script += `          set AppleScript's text item delimiters to ""\n`;
+      script += `        end if\n`;
+      script += `      end if\n`;
+    }
+    
+    script += '      if hasChanges then\n';
+    script += '        set tag names of targetItem to currentTags\n';
+    script += '        set updatedCount to updatedCount + 1\n';
     script += '      end if\n';
-    script += '      set updatedCount to updatedCount + 1\n';
     script += '    end if\n';
     script += '  on error\n';
     script += '    try\n';
-    // If not a todo, try as a project
+    // Same logic for projects
     script += `      set targetItem to project id "${escapedId}"\n`;
     script += '      set currentTags to tag names of targetItem\n';
-    script += '      if currentTags is not missing value then\n';
-    script += '        set AppleScript\'s text item delimiters to ","\n';
-    script += '        set tagList to text items of currentTags\n';
-    script += '        set newTagList to {}\n';
-    script += '        repeat with tagName in tagList\n';
-    script += '          set tagName to (tagName as string)\n';
-    script += '          if tagName is not in tagsToRemove then\n';
-    script += '            set end of newTagList to tagName\n';
-    script += '          end if\n';
-    script += '        end repeat\n';
-    script += '        set AppleScript\'s text item delimiters to ","\n';
-    script += '        set newTags to newTagList as string\n';
-    script += '        set AppleScript\'s text item delimiters to ""\n';
-    script += '        if newTags is "" then\n';
-    script += '          set tag names of targetItem to missing value\n';
-    script += '        else\n';
-    script += '          set tag names of targetItem to newTags\n';
+    script += '      if currentTags is not missing value and currentTags is not "" then\n';
+    script += '        set hasChanges to false\n';
+    
+    for (const tag of tags) {
+      const escapedTag = bridge.escapeString(tag);
+      script += `        -- Remove "${escapedTag}" from currentTags\n`;
+      script += `        if currentTags contains "${escapedTag}" then\n`;
+      script += `          set hasChanges to true\n`;
+      script += `          if currentTags is equal to "${escapedTag}" then\n`;
+      script += `            set currentTags to ""\n`;
+      script += `          else if currentTags starts with "${escapedTag}, " then\n`;
+      script += `            set currentTags to text ${escapedTag.length + 3} thru -1 of currentTags\n`;
+      script += `          else if currentTags ends with ", ${escapedTag}" then\n`;
+      script += `            set currentTags to text 1 thru ${-(escapedTag.length + 3)} of currentTags\n`;
+      script += `          else\n`;
+      script += `            set AppleScript's text item delimiters to ", ${escapedTag}, "\n`;
+      script += `            set tagParts to text items of currentTags\n`;
+      script += `            set AppleScript's text item delimiters to ", "\n`;
+      script += `            set currentTags to tagParts as string\n`;
+      script += `            set AppleScript's text item delimiters to ""\n`;
+      script += `          end if\n`;
+      script += `        end if\n`;
+    }
+    
+    script += '        if hasChanges then\n';
+    script += '          set tag names of targetItem to currentTags\n';
+    script += '          set updatedCount to updatedCount + 1\n';
     script += '        end if\n';
-    script += '        set updatedCount to updatedCount + 1\n';
     script += '      end if\n';
     script += '    end try\n';
     script += '  end try\n';

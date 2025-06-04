@@ -88,7 +88,7 @@ export class TestResourceTracker {
         const testAreaNames = Array.from(this.areaNames);
         
         // Find all areas to get their IDs
-        const areas = await this.server.areaTools.listAreas({});
+        const areas = await this.server.areaTools.listAreas();
         const testAreas = areas.areas.filter(area => 
           testAreaNames.includes(area.name)
         );

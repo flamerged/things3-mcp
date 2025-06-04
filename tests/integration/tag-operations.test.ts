@@ -99,15 +99,40 @@ describe('Tag Operations Integration Tests', () => {
       const todoResult = await env.server.todosTools.createTodo({
         title: `TestTodo_${Date.now()}`
       });
-      testTodoId = todoResult.id!;
+      
+      if (!todoResult.id || todoResult.id === 'unknown') {
+        throw new Error('Failed to create test TODO with valid ID');
+      }
+      
+      testTodoId = todoResult.id;
+      console.log(`Created TODO with ID: ${testTodoId}`);
       env.tracker.trackTodo(testTodoId);
+      
+      // Wait for Things3 to fully process the TODO creation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Verify the TODO exists
+      try {
+        const verifyTodo = await env.server.todosTools.getTodo({ id: testTodoId });
+        console.log(`Verified TODO exists: ${verifyTodo?.title}`);
+      } catch (error) {
+        console.error(`Failed to verify TODO with ID ${testTodoId}:`, error);
+      }
 
       // Create a test project
       const projectResult = await env.server.projectTools.createProject({
         name: `TestProject_${Date.now()}`
       });
-      testProjectId = projectResult.id!;
+      
+      if (!projectResult.id || projectResult.id === 'created') {
+        throw new Error('Failed to create test project with valid ID');
+      }
+      
+      testProjectId = projectResult.id;
       env.tracker.trackProject(testProjectId);
+      
+      // Wait for Things3 to fully process the project creation
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Create a test tag
       testTagName = `AssignTag_${Date.now()}`;
@@ -118,6 +143,7 @@ describe('Tag Operations Integration Tests', () => {
     }, 30000);
 
     it('should add tags to a TODO', async () => {
+      console.log(`Attempting to add tag "${testTagName}" to TODO ID: ${testTodoId}`);
       const result = await env.server.tagTools.addTags({
         itemIds: [testTodoId],
         tags: [testTagName]
@@ -163,8 +189,7 @@ describe('Tag Operations Integration Tests', () => {
       expect(result).toHaveProperty('updatedCount');
       expect(result.updatedCount).toBe(1);
       
-      // Clear any potential caches and wait a moment
-      env.server.clearAllCaches();
+      // Wait a moment for Things3 to process
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Verify the tag was removed

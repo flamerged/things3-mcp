@@ -14,6 +14,7 @@ import {
 import { 
   listTags, 
   createTag,
+  addTagsToItems,
   removeTagsFromItems
 } from '../templates/applescript-templates.js';
 import { 
@@ -21,7 +22,6 @@ import {
   cleanTags
 } from '../utils/tag-validator.js';
 import { AppleScriptBridge } from '../utils/applescript.js';
-import { urlSchemeHandler } from '../utils/url-scheme.js';
 
 export class TagTools {
   private bridge: AppleScriptBridge;
@@ -89,14 +89,15 @@ export class TagTools {
     }
 
     try {
-      // Use URL scheme for write operations
-      await urlSchemeHandler.addTagsToItems(params.itemIds, cleanedTags);
+      // Use AppleScript for tag operations (handles both TODOs and Projects)
+      const script = addTagsToItems(params.itemIds, cleanedTags);
+      const result = await this.bridge.execute(script);
       
+      const updatedCount = parseInt(result.trim()) || 0;
       
-      // Since URL scheme doesn't return count, assume all items were updated
       return { 
-        success: true, 
-        updatedCount: params.itemIds.length 
+        success: updatedCount > 0, 
+        updatedCount: updatedCount 
       };
     } catch (error) {
       return {

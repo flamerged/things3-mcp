@@ -153,7 +153,7 @@ export class TodosTools {
         this.errorCorrector.logCorrections(correctionReport);
       }
       
-      // Always use URL scheme for creating TODOs (more reliable than AppleScript)
+      // Always use URL scheme for creating TODOs (now supports checklist items directly)
       const createParams: Parameters<typeof urlSchemeHandler.createTodo>[0] = {
         title: correctedParams.title
       };
@@ -180,6 +180,7 @@ export class TodosTools {
       // Search for the TODO we just created
       let searchResult = await this.listTodos({
         searchText: correctedParams.title,
+        status: 'open',
         limit: 10
       });
       
@@ -215,6 +216,7 @@ export class TodosTools {
         
         searchResult = await this.listTodos({
           filter: 'inbox',
+          status: 'open',
           limit: 50
         });
         
@@ -370,12 +372,15 @@ export class TodosTools {
       
       const ids = Array.isArray(params.ids) ? params.ids : [params.ids];
       
-      // Use URL scheme for deleting TODOs (cancel them)
-      await urlSchemeHandler.cancelTodos(ids);
+      // Use AppleScript for actual deletion
+      const script = templates.deleteTodos(ids);
+      const result = await this.bridge.execute(script);
+      
+      const deletedCount = parseInt(result.trim()) || 0;
       
       return {
-        success: true,
-        deletedCount: ids.length,
+        success: deletedCount > 0,
+        deletedCount: deletedCount,
       };
     } catch (error) {
       if (error instanceof Things3Error) {

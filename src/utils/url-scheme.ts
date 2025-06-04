@@ -172,55 +172,25 @@ export class URLSchemeHandler {
     headingId?: string;
     heading?: string;
   }): Promise<void> {
+    // Use simple URL format for all TODOs (including those with checklist items)
+    const urlParams: Record<string, unknown> = {
+      title: params.title,
+      notes: params.notes,
+      when: this.formatDateForUrl(params.whenDate),
+      deadline: this.formatDateForUrl(params.deadline),
+      tags: params.tags?.join(','),
+      'list-id': params.projectId || params.areaId,
+      'heading-id': params.headingId,
+      'heading': params.heading
+    };
+    
+    // Add checklist items as newline-separated string (per Things3 documentation)
     if (params.checklistItems && params.checklistItems.length > 0) {
-      // Use JSON format for complex todos with checklists
-      const attributes: Things3AttributesWithAuth = {
-        title: params.title,
-        notes: params.notes,
-        when: this.formatDateForUrl(params.whenDate),
-        deadline: this.formatDateForUrl(params.deadline),
-        tags: params.tags,
-        'list-id': params.projectId || params.areaId,
-        'checklist-items': params.checklistItems.map(title => ({
-          type: Things3ItemType.CHECKLIST_ITEM,
-          attributes: { title }
-        }))
-      };
-
-      // Add auth token for create operations with checklists
-      const authToken = this.getAuthToken();
-      if (authToken) {
-        attributes['auth-token'] = authToken;
-      }
-      
-      const todo = {
-        type: Things3ItemType.TODO,
-        attributes
-      };
-      
-      // Remove undefined values
-      Object.keys(todo.attributes).forEach(key => {
-        if (todo.attributes[key] === undefined) {
-          delete todo.attributes[key];
-        }
-      });
-      
-      const url = this.buildJsonUrl([todo]);
-      await this.execute(url);
-    } else {
-      // Use simple URL format for basic todos
-      const url = this.buildUrl(Things3Operation.ADD, {
-        title: params.title,
-        notes: params.notes,
-        when: this.formatDateForUrl(params.whenDate),
-        deadline: this.formatDateForUrl(params.deadline),
-        tags: params.tags?.join(','),
-        'list-id': params.projectId || params.areaId,
-        'heading-id': params.headingId,
-        'heading': params.heading
-      });
-      await this.execute(url);
+      urlParams['checklist-items'] = params.checklistItems.join('\n');
     }
+    
+    const url = this.buildUrl(Things3Operation.ADD, urlParams);
+    await this.execute(url);
   }
 
   /**
@@ -538,7 +508,10 @@ export class URLSchemeHandler {
     const attributes: Things3AttributesWithAuth = {
       'append-checklist-items': items.map(title => ({
         type: Things3ItemType.CHECKLIST_ITEM,
-        attributes: { title }
+        attributes: { 
+          title,
+          completed: false
+        }
       }))
     };
 
@@ -563,14 +536,24 @@ export class URLSchemeHandler {
    * Add tags to items (TODOs or Projects) using URL scheme
    */
   async addTagsToItems(itemIds: string[], tags: string[]): Promise<void> {
-    const items = itemIds.map(id => ({
-      type: Things3ItemType.TODO, // Works for both TODOs and projects
-      id,
-      operation: 'update' as const,
-      attributes: {
+    const authToken = this.getAuthToken();
+    const items = itemIds.map(id => {
+      const attributes: Things3AttributesWithAuth = {
         'add-tags': tags
+      };
+      
+      // Add auth token for update operations
+      if (authToken) {
+        attributes['auth-token'] = authToken;
       }
-    }));
+      
+      return {
+        type: Things3ItemType.TODO, // Works for both TODOs and projects
+        id,
+        operation: 'update' as const,
+        attributes
+      };
+    });
     
     const url = this.buildJsonUrl(items);
     await this.execute(url);

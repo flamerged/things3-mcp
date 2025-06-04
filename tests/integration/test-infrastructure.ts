@@ -209,13 +209,6 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
     throw new Error('Things3 is not available for testing');
   }
 
-  // Clear caches to ensure fresh state
-  try {
-    await server.systemTools.refresh();
-    console.log('✅ Caches cleared');
-  } catch (error) {
-    console.warn('⚠️  Failed to clear caches:', error);
-  }
 
   console.log('✅ Test environment ready\n');
   

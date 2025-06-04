@@ -7,6 +7,9 @@ import { resolve } from 'path';
 // Load environment variables from .env file
 config({ path: resolve(process.cwd(), '.env') });
 
+// Set NODE_ENV to integration-test to disable logging during integration tests
+process.env['NODE_ENV'] = 'integration-test';
+
 // Increase timeout for integration tests
 jest.setTimeout(120000); // 2 minutes
 

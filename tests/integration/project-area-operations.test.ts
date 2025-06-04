@@ -38,7 +38,7 @@ describe('Project and Area Operations Integration Tests', () => {
 
   describe('Area Management', () => {
     it('should list areas', async () => {
-      const result = await env.server.areaTools.listAreas({});
+      const result = await env.server.areaTools.listAreas();
       const areas = result.areas;
       
       expect(Array.isArray(areas)).toBe(true);
@@ -67,9 +67,7 @@ describe('Project and Area Operations Integration Tests', () => {
       
       // Verify area was created
       await waitForThings3(3000);
-      // Force cache refresh
-      await env.server.systemTools.refresh();
-      const areas = await env.server.areaTools.listAreas({});
+      const areas = await env.server.areaTools.listAreas();
       // Things3 might remove spaces from area names
       const createdArea = areas.areas.find(a => 
         a.name === areaName || a.name === areaName.replace(/ /g, '')
@@ -226,13 +224,18 @@ describe('Project and Area Operations Integration Tests', () => {
       });
       
       expect(areaResult.id).toBeTruthy();
+      
+      if (!areaResult.id) {
+        throw new Error('Failed to create area with valid ID');
+      }
+      
       env.tracker.trackArea(areaName);
       
       // Create a project in the area
       const projectName = `${TEST_PREFIX}Project in Area`;
       const projectResult = await env.server.projectTools.createProject({
         name: projectName,
-        areaId: areaResult.id!
+        areaId: areaResult.id
       });
       
       expect(projectResult.success).toBe(true);
@@ -293,6 +296,12 @@ describe('Project and Area Operations Integration Tests', () => {
         env.server.todosTools.createTodo({ title: `${TEST_PREFIX}TODO 3 for Project` })
       ]);
       
+      // Check for valid IDs
+      const invalidTodos = todos.filter(t => !t.id || t.id === 'unknown');
+      if (invalidTodos.length > 0) {
+        throw new Error(`Failed to create ${invalidTodos.length} TODOs with valid IDs`);
+      }
+      
       const todoIds = todos.map(t => t.id!);
       env.tracker.trackTodos(todoIds);
       
@@ -313,69 +322,4 @@ describe('Project and Area Operations Integration Tests', () => {
     });
   });
 
-  describe('Cache Performance', () => {
-    it('should cache project lists', async () => {
-      // Clear cache first
-      await env.server.systemTools.refresh();
-      
-      // First call - populates cache
-      const start1 = Date.now();
-      const result1 = await env.server.projectTools.listProjects({});
-      const time1 = Date.now() - start1;
-      
-      // Second call - should be from cache (faster)
-      const start2 = Date.now();
-      const result2 = await env.server.projectTools.listProjects({});
-      const time2 = Date.now() - start2;
-      
-      // Cache should return same results
-      expect(result1.projects.length).toBe(result2.projects.length);
-      
-      // Log timing info for debugging
-      console.log(`First call: ${time1}ms, Second call: ${time2}ms`);
-    });
-
-    it('should invalidate cache on project updates', async () => {
-      const projectName = `${TEST_PREFIX}Cache Test Project`;
-      
-      // Clear cache first
-      await env.server.systemTools.refresh();
-      
-      // Get initial project list
-      const initialResult = await env.server.projectTools.listProjects({});
-      const initialCount = initialResult.projects.length;
-      
-      // Create a new project
-      const createResult = await env.server.projectTools.createProject({
-        name: projectName
-      });
-      expect(createResult.success).toBe(true);
-      expect(createResult.id).toBeTruthy();
-      env.tracker.trackProject(createResult.id!);
-      
-      // Wait for Things3 to process
-      await waitForThings3(1000);
-      
-      // Get updated list (cache should be invalidated)
-      const updatedResult = await env.server.projectTools.listProjects({ 
-        includeCompleted: true 
-      });
-      
-      // Should have one more project
-      expect(updatedResult.projects.length).toBeGreaterThanOrEqual(initialCount);
-      
-      // Verify our new project is in the list
-      const foundProject = updatedResult.projects.find(p => p.name === projectName);
-      
-      if (!foundProject && createResult.id === 'created') {
-        // If we got the fallback ID, just check that we have more projects than before
-        expect(updatedResult.projects.length).toBeGreaterThan(initialCount);
-      } else {
-        expect(foundProject).toBeTruthy();
-        if (foundProject && createResult.id !== 'created') {
-          expect(foundProject.id).toBe(createResult.id);
-        }
-      }
-    });
-  });
 });

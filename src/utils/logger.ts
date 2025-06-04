@@ -195,8 +195,12 @@ export class Logger {
    * Output formatted log
    */
   private output(formatted: string): void {
-    // Console output - write to stderr for MCP compatibility
-    console.error(formatted);
+    // Skip console output during integration tests to keep output clean
+    // Unit tests still need console output for assertions
+    if (process.env['NODE_ENV'] !== 'integration-test') {
+      // Console output - write to stderr for MCP compatibility
+      console.error(formatted);
+    }
     
     // File output
     if (this.fileStream) {
