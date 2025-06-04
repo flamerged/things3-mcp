@@ -229,7 +229,7 @@ describe('Project and Area Operations Integration Tests', () => {
         throw new Error('Failed to create area with valid ID');
       }
       
-      env.tracker.trackArea(areaName);
+      env.tracker.trackArea(areaResult.id);
       
       // Create a project in the area
       const projectName = `${TEST_PREFIX}Project in Area`;
