@@ -181,11 +181,20 @@ export class EnhancedTestResourceTracker {
       }
     }
 
+    // Delete tags
     if (this.tags.size > 0) {
-      console.log(`  🚨 Note: ${this.tags.size} test tags created - manual cleanup may be needed`);
-      console.log(`     Tags: ${Array.from(this.tags).join(', ')}`);
+      try {
+        const tagNames = Array.from(this.tags);
+        console.log(`  Deleting ${tagNames.length} tags...`);
+        const result = await this.server.tagTools.deleteTags({ names: tagNames });
+        cleaned += result.deletedCount;
+        this.tags.clear();
+      } catch (error) {
+        console.error('  ❌ Failed to delete some tags:', error);
+        console.log(`     Tags: ${Array.from(this.tags).join(', ')}`);
+        failed += this.tags.size;
+      }
     }
-    this.tags.clear();
 
     console.log(`✅ Cleanup complete: ${cleaned} cleaned, ${failed} failed`);
     console.log(this.getTimingReport());

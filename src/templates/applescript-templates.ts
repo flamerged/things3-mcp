@@ -871,6 +871,28 @@ export function removeTagsFromItems(itemIds: string[], tags: string[]): string {
 }
 
 /**
+ * Generate AppleScript to delete tags by name
+ */
+export function deleteTags(tagNames: string[]): string {
+  let script = 'tell application "Things3"\n';
+  script += '  set deletedCount to 0\n';
+  
+  for (const tagName of tagNames) {
+    const escapedName = bridge.escapeString(tagName);
+    script += '  try\n';
+    script += `    set aTag to tag "${escapedName}"\n`;
+    script += '    delete aTag\n';
+    script += '    set deletedCount to deletedCount + 1\n';
+    script += '  end try\n';
+  }
+  
+  script += '  return deletedCount\n';
+  script += 'end tell';
+  
+  return script;
+}
+
+/**
  * Generate AppleScript to list tags
  */
 export function listTags(): string {

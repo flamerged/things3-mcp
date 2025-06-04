@@ -169,7 +169,6 @@ export class URLSchemeHandler {
     checklistItems?: string[];
     projectId?: string;
     areaId?: string;
-    headingId?: string;
     heading?: string;
   }): Promise<void> {
     // Use simple URL format for all TODOs (including those with checklist items)
@@ -180,7 +179,6 @@ export class URLSchemeHandler {
       deadline: this.formatDateForUrl(params.deadline),
       tags: params.tags?.join(','),
       'list-id': params.projectId || params.areaId,
-      'heading-id': params.headingId,
       'heading': params.heading
     };
     

@@ -104,30 +104,16 @@ export class TestResourceTracker {
     }
     this.areaNames.clear();
 
-    // Clean up tags by removing them from all items
-    // Note: We can't delete tags in Things3, but we can remove them from items
+    // Delete all tracked tags completely from Things3
     if (this.tagNames.size > 0) {
       try {
         const testTagNames = Array.from(this.tagNames);
+        console.log(`      Deleting ${testTagNames.length} tags...`);
         
-        // Find all items with test tags - need to get full details
-        const allTodos = await this.server.todosTools.listTodos({ limit: 1000 });
-        const todosWithTestTags: string[] = [];
-        for (const todo of allTodos) {
-          const fullTodo = await this.server.todosTools.getTodo({ id: todo.id });
-          if (fullTodo && fullTodo.tags.some(tag => testTagNames.includes(tag))) {
-            todosWithTestTags.push(todo.id);
-          }
-        }
-
-        if (todosWithTestTags.length > 0) {
-          await this.server.tagTools.removeTags({ 
-            itemIds: todosWithTestTags, 
-            tags: testTagNames 
-          });
-        }
+        const result = await this.server.tagTools.deleteTags({ names: testTagNames });
+        console.log(`      Deleted ${result.deletedCount} tags`);
       } catch (error) {
-        errors.push(new Error(`Failed to clean up tags: ${error}`));
+        errors.push(new Error(`Failed to delete tags: ${error}`));
       }
     }
     this.tagNames.clear();

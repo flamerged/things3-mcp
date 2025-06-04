@@ -202,7 +202,6 @@ export class TodosTools {
       if (correctedParams.checklistItems) createParams.checklistItems = correctedParams.checklistItems;
       if (correctedParams.projectId) createParams.projectId = correctedParams.projectId;
       if (correctedParams.areaId) createParams.areaId = correctedParams.areaId;
-      if (correctedParams.headingId) createParams.headingId = correctedParams.headingId;
       if (correctedParams.heading) createParams.heading = correctedParams.heading;
       
       await urlSchemeHandler.createTodo(createParams);
@@ -534,13 +533,9 @@ export class TodosTools {
               type: 'string',
               description: 'Area to assign to',
             },
-            headingId: {
-              type: 'string',
-              description: 'ID of heading within project to add to',
-            },
             heading: {
               type: 'string',
-              description: 'Title of heading within project to add to (ignored if headingId is present)',
+              description: 'Title of heading within project to add to',
             },
             checklistItems: {
               type: 'array',

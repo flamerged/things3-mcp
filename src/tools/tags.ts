@@ -9,13 +9,16 @@ import {
   TagsAddResult,
   TagsRemoveParams,
   TagsRemoveResult,
+  TagsDeleteParams,
+  TagsDeleteResult,
   Tag
 } from '../types/index.js';
 import { 
   listTags, 
   createTag,
   addTagsToItems,
-  removeTagsFromItems
+  removeTagsFromItems,
+  deleteTags
 } from '../templates/applescript-templates.js';
 import { 
   cleanTagName, 
@@ -169,6 +172,51 @@ export class TagTools {
   }
 
   /**
+   * Delete tags completely from Things3
+   */
+  async deleteTags(params: TagsDeleteParams): Promise<TagsDeleteResult> {
+    // Convert single tag name to array
+    const tagNames = Array.isArray(params.names) ? params.names : [params.names];
+    
+    // Clean tag names
+    const cleanedNames = tagNames.map(name => name.trim()).filter(name => name.length > 0);
+    
+    if (cleanedNames.length === 0) {
+      return {
+        success: false,
+        deletedCount: 0,
+        error: 'No valid tag names provided'
+      };
+    }
+
+    try {
+      // Use AppleScript to delete tags
+      const script = deleteTags(cleanedNames);
+      const result = await this.bridge.execute(script);
+      
+      const deletedCount = parseInt(result.trim()) || 0;
+      
+      this.logger.info(`Deleted ${deletedCount} tags: ${cleanedNames.join(', ')}`);
+      
+      return {
+        success: deletedCount > 0,
+        deletedCount: deletedCount
+      };
+    } catch (error) {
+      this.logger.warn('Failed to delete tags', { 
+        tagNames: cleanedNames,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      
+      return {
+        success: false,
+        deletedCount: 0,
+        error: error instanceof Error ? error.message : 'Failed to delete tags'
+      };
+    }
+  }
+
+  /**
    * Get all tag tools for registration
    */
   static getTools(tagTools: TagTools): Tool[] {
@@ -242,6 +290,24 @@ export class TagTools {
           required: ['itemIds', 'tags']
         },
         handler: async (params: unknown) => tagTools.removeTags(params as TagsRemoveParams)
+      },
+      {
+        name: 'tags_delete',
+        description: 'Delete tags completely from Things3',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            names: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' } }
+              ],
+              description: 'Tag name(s) to delete completely from Things3'
+            }
+          },
+          required: ['names']
+        },
+        handler: async (params: unknown) => tagTools.deleteTags(params as TagsDeleteParams)
       }
     ];
   }

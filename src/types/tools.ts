@@ -63,7 +63,6 @@ export interface TodosCreateParams {
   tags?: string[];
   projectId?: string;
   areaId?: string;
-  headingId?: string;
   heading?: string;
   checklistItems?: string[];
   reminder?: {
@@ -325,6 +324,20 @@ export interface TagsRemoveParams {
  */
 export interface TagsRemoveResult extends OperationResult {
   updatedCount: number;
+}
+
+/**
+ * Parameters for tags.delete tool
+ */
+export interface TagsDeleteParams {
+  names: string | string[];
+}
+
+/**
+ * Return type for tags.delete tool
+ */
+export interface TagsDeleteResult extends OperationResult {
+  deletedCount: number;
 }
 
 // ========== Bulk Operation Tools ==========

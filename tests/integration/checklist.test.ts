@@ -42,6 +42,7 @@ describe('Checklist Integration Tests', () => {
     
     if (result.id) {
       tracker.trackTodo(result.id);
+      tracker.trackTag('integration-test');
       
       // Verify the TODO exists by searching for it
       const todos = await todosTools.listTodos({
