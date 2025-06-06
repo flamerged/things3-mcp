@@ -1,8 +1,7 @@
 // ABOUTME: Implementation of TODO-related tools for Things3 MCP server
 // ABOUTME: Provides CRUD operations for TODOs with filtering and search
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import {
   TodosListParams,
   TodosListResult,
@@ -24,52 +23,18 @@ import {
 import * as templates from '../templates/applescript-templates.js';
 import { ErrorCorrector } from '../utils/error-correction.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
-import { createLogger } from '../utils/logger.js';
-import { TagTools } from './tags.js';
 
 /**
  * Handles all TODO-related operations
  */
-export class TodosTools {
-  private bridge: AppleScriptBridge;
+export class TodosTools extends BaseTool {
   private errorCorrector: ErrorCorrector;
-  private tagTools: TagTools;
-  private logger = createLogger('todos');
 
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    super('todos');
     this.errorCorrector = new ErrorCorrector();
-    this.tagTools = new TagTools();
   }
 
-  /**
-   * Ensure tags exist in Things3, creating them if necessary
-   */
-  private async ensureTagsExist(tags: string[]): Promise<void> {
-    if (!tags || tags.length === 0) return;
-    
-    try {
-      // Get existing tags
-      const existingTagsResult = await this.tagTools.listTags();
-      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
-      
-      // Find missing tags
-      const missingTags = tags.filter(tag => !existingTagNames.has(tag));
-      
-      if (missingTags.length > 0) {
-        this.logger.info(`Creating ${missingTags.length} missing tags: ${missingTags.join(', ')}`);
-        
-        // Create missing tags
-        for (const tagName of missingTags) {
-          await this.tagTools.createTag({ name: tagName });
-        }
-      }
-    } catch (error) {
-      this.logger.warn('Failed to ensure tags exist, continuing with TODO creation', { 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
-    }
-  }
 
   /**
    * List TODOs with optional filtering
@@ -436,13 +401,16 @@ export class TodosTools {
   }
 
   /**
-   * Get tool definitions for registration
+   * Get tool registrations for the registry
    */
-  static getTools(): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'todos_list',
-        description: 'List TODOs with optional filtering',
+        handler: this.listTodos.bind(this),
+        toolDefinition: {
+          name: 'todos_list',
+          description: 'List TODOs with optional filtering',
         inputSchema: {
           type: 'object',
           properties: {
@@ -483,9 +451,13 @@ export class TodosTools {
             },
           },
         },
+        }
       },
       {
         name: 'todos_get',
+        handler: this.getTodo.bind(this),
+        toolDefinition: {
+          name: 'todos_get',
         description: 'Get full details of a specific TODO',
         inputSchema: {
           type: 'object',
@@ -497,9 +469,13 @@ export class TodosTools {
           },
           required: ['id'],
         },
+        },
       },
       {
         name: 'todos_create',
+        handler: this.createTodo.bind(this),
+        toolDefinition: {
+          name: 'todos_create',
         description: 'Create a new TODO',
         inputSchema: {
           type: 'object',
@@ -554,9 +530,13 @@ export class TodosTools {
           },
           required: ['title'],
         },
+        },
       },
       {
         name: 'todos_update',
+        handler: this.updateTodo.bind(this),
+        toolDefinition: {
+          name: 'todos_update',
         description: 'Update an existing TODO',
         inputSchema: {
           type: 'object',
@@ -597,9 +577,13 @@ export class TodosTools {
           },
           required: ['id'],
         },
+        },
       },
       {
         name: 'todos_complete',
+        handler: this.completeTodos.bind(this),
+        toolDefinition: {
+          name: 'todos_complete',
         description: 'Mark TODO(s) as complete',
         inputSchema: {
           type: 'object',
@@ -614,9 +598,13 @@ export class TodosTools {
           },
           required: ['ids'],
         },
+        },
       },
       {
         name: 'todos_uncomplete',
+        handler: this.uncompleteTodos.bind(this),
+        toolDefinition: {
+          name: 'todos_uncomplete',
         description: 'Mark TODO(s) as incomplete',
         inputSchema: {
           type: 'object',
@@ -631,9 +619,13 @@ export class TodosTools {
           },
           required: ['ids'],
         },
+        },
       },
       {
         name: 'todos_delete',
+        handler: this.deleteTodos.bind(this),
+        toolDefinition: {
+          name: 'todos_delete',
         description: 'Delete TODO(s)',
         inputSchema: {
           type: 'object',
@@ -648,6 +640,7 @@ export class TodosTools {
           },
           required: ['ids'],
         },
+        }
       },
     ];
   }

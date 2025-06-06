@@ -33,6 +33,6 @@ describe('Things3Server', () => {
   it('should register TODO tools', () => {
     // The logger should have logged the registration messages
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registering Things3 tools...'));
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registered 7 TODO tools'));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registered 7 refactored tools'));
   });
 });

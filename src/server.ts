@@ -5,14 +5,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { 
-  TodosListParams, TodosGetParams, TodosCreateParams, TodosUpdateParams, 
-  TodosCompleteParams, TodosUncompleteParams, TodosDeleteParams,
   ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams, ProjectsDeleteParams,
   AreasCreateParams, AreasDeleteParams,
   TagsCreateParams, TagsAddParams, TagsRemoveParams, TagsDeleteParams,
   BulkMoveParams, BulkUpdateDatesParams,
   LogbookSearchParams
 } from './types/tools.js';
+import { ToolRegistry } from './base/tool-registry.js';
 import { TodosTools } from './tools/todos.js';
 import { ProjectTools } from './tools/projects.js';
 import { AreaTools } from './tools/areas.js';
@@ -26,6 +25,7 @@ export class Things3Server {
   private server: Server;
   private transport: StdioServerTransport;
   private logger = createLogger('things3');
+  private registry: ToolRegistry;
   public todosTools: TodosTools;
   public projectTools: ProjectTools;
   public areaTools: AreaTools;
@@ -48,6 +48,9 @@ export class Things3Server {
     );
 
     this.transport = new StdioServerTransport();
+    this.registry = new ToolRegistry();
+    
+    // Initialize tool handlers
     this.todosTools = new TodosTools();
     this.projectTools = new ProjectTools();
     this.areaTools = new AreaTools();
@@ -55,14 +58,17 @@ export class Things3Server {
     this.bulkTools = new BulkTools();
     this.logbookTools = new LogbookTools();
     this.systemTools = new SystemTools();
+    
     this.registerTools();
   }
 
   private registerTools(): void {
     this.logger.info('Registering Things3 tools...');
     
-    // Get all tools
-    const todoTools = TodosTools.getTools();
+    // Register refactored tools with the registry
+    this.registry.registerTool(this.todosTools);
+    
+    // Get legacy tools (to be refactored later)
     const projectTools = ProjectTools.getTools(this.projectTools);
     const areaTools = AreaTools.getTools(this.areaTools);
     const tagTools = TagTools.getTools(this.tagTools);
@@ -70,8 +76,10 @@ export class Things3Server {
     const logbookTools = this.logbookTools.getTools();
     const systemTools = this.systemTools.getTools();
     
-    // Combine all tools
-    const allTools = [...todoTools, ...projectTools, ...areaTools, ...tagTools, ...bulkTools, ...logbookTools, ...systemTools];
+    const legacyTools = [...projectTools, ...areaTools, ...tagTools, ...bulkTools, ...logbookTools, ...systemTools];
+    
+    // Combine registry tools and legacy tools for capabilities
+    const allTools = [...this.registry.getToolDefinitions(), ...legacyTools];
     
     // Update server capabilities
     this.server.registerCapabilities({
@@ -95,22 +103,15 @@ export class Things3Server {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       
+      // Try to handle with registry first (for refactored tools)
+      const handler = this.registry.getHandler(name);
+      if (handler) {
+        const result = await this.registry.executeTool(name, args);
+        return { toolResult: result };
+      }
+      
+      // Fall back to switch statement for non-refactored tools
       switch (name) {
-        // TODO tools
-        case 'todos_list':
-          return { toolResult: await this.todosTools.listTodos(args as unknown as TodosListParams) };
-        case 'todos_get':
-          return { toolResult: await this.todosTools.getTodo(args as unknown as TodosGetParams) };
-        case 'todos_create':
-          return { toolResult: await this.todosTools.createTodo(args as unknown as TodosCreateParams) };
-        case 'todos_update':
-          return { toolResult: await this.todosTools.updateTodo(args as unknown as TodosUpdateParams) };
-        case 'todos_complete':
-          return { toolResult: await this.todosTools.completeTodos(args as unknown as TodosCompleteParams) };
-        case 'todos_uncomplete':
-          return { toolResult: await this.todosTools.uncompleteTodos(args as unknown as TodosUncompleteParams) };
-        case 'todos_delete':
-          return { toolResult: await this.todosTools.deleteTodos(args as unknown as TodosDeleteParams) };
         
         // Project tools
         case 'projects_list':
@@ -165,13 +166,8 @@ export class Things3Server {
       }
     });
     
-    this.logger.info(`Registered ${todoTools.length} TODO tools`);
-    this.logger.info(`Registered ${projectTools.length} Project tools`);
-    this.logger.info(`Registered ${areaTools.length} Area tools`);
-    this.logger.info(`Registered ${tagTools.length} Tag tools`);
-    this.logger.info(`Registered ${bulkTools.length} Bulk tools`);
-    this.logger.info(`Registered ${logbookTools.length} Logbook tools`);
-    this.logger.info(`Registered ${systemTools.length} System tools`);
+    this.logger.info(`Registered ${this.registry.getToolCount()} refactored tools`);
+    this.logger.info(`Registered ${legacyTools.length} legacy tools`);
     this.logger.info(`Total tools registered: ${allTools.length}`);
   }
 
