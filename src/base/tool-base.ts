@@ -8,7 +8,8 @@ import { createLogger } from '../utils/logger.js';
 /**
  * Tool handler function type
  */
-export type ToolHandler = (args: unknown) => Promise<unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ToolHandler = (args: any) => Promise<any>;
 
 /**
  * Tool registration info

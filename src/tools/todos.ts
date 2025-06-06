@@ -21,18 +21,15 @@ import {
   Things3Error,
 } from '../types/index.js';
 import * as templates from '../templates/applescript-templates.js';
-import { ErrorCorrector } from '../utils/error-correction.js';
+import { correctTodoCreateParams, correctTodoUpdateParams, logCorrections } from '../utils/error-correction.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
 
 /**
  * Handles all TODO-related operations
  */
 export class TodosTools extends BaseTool {
-  private errorCorrector: ErrorCorrector;
-
   constructor() {
     super('todos');
-    this.errorCorrector = new ErrorCorrector();
   }
 
 
@@ -142,12 +139,12 @@ export class TodosTools extends BaseTool {
       await this.bridge.ensureThings3Running();
       
       // Apply error correction
-      const correctionReport = this.errorCorrector.correctTodoCreateParams(params);
+      const correctionReport = correctTodoCreateParams(params);
       const correctedParams = correctionReport.correctedData;
       
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
-        this.errorCorrector.logCorrections(correctionReport);
+        logCorrections(correctionReport);
       }
       
       // Ensure tags exist before creating the TODO
@@ -268,12 +265,12 @@ export class TodosTools extends BaseTool {
       await this.bridge.ensureThings3Running();
       
       // Apply error correction
-      const correctionReport = this.errorCorrector.correctTodoUpdateParams(params);
+      const correctionReport = correctTodoUpdateParams(params);
       const correctedParams = correctionReport.correctedData;
       
       // Log corrections if any were made
       if (correctionReport.hasCorrections) {
-        this.errorCorrector.logCorrections(correctionReport);
+        logCorrections(correctionReport);
       }
       
       // Ensure tags exist before updating the TODO

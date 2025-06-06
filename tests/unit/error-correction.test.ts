@@ -1,16 +1,11 @@
 // ABOUTME: Unit tests for the error correction system that validates automatic fixing of common Things3 issues
 // ABOUTME: Tests date conflicts, missing titles, invalid references, and tag cleaning
 
-import { ErrorCorrector } from '../../src/utils/error-correction';
+import { correctTodoCreateParams, correctTodoUpdateParams, setValidProjectIds, setValidAreaIds, logCorrections } from '../../src/utils/error-correction';
 import { TodosCreateParams, TodosUpdateParams } from '../../src/types/tools';
 import { CorrectionType } from '../../src/types/corrections';
 
-describe('ErrorCorrector', () => {
-  let errorCorrector: ErrorCorrector;
-
-  beforeEach(() => {
-    errorCorrector = new ErrorCorrector();
-  });
+describe('Error Correction Functions', () => {
 
   describe('Date Conflict Correction', () => {
     it('should swap dates when deadline is before when date', () => {
@@ -20,7 +15,7 @@ describe('ErrorCorrector', () => {
         deadline: '2025-01-10T10:00:00Z', // Before when date
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections).toHaveLength(1);
@@ -36,7 +31,7 @@ describe('ErrorCorrector', () => {
         deadline: '2025-01-15T10:00:00Z', // After when date
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(false);
       expect(report.corrections).toHaveLength(0);
@@ -48,7 +43,7 @@ describe('ErrorCorrector', () => {
         whenDate: '2025-01-10T10:00:00Z',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(false);
     });
@@ -61,7 +56,7 @@ describe('ErrorCorrector', () => {
         notes: 'This is a detailed description of what needs to be done\nWith multiple lines',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections).toHaveLength(1);
@@ -74,7 +69,7 @@ describe('ErrorCorrector', () => {
         title: '',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.MISSING_TITLE);
@@ -87,7 +82,7 @@ describe('ErrorCorrector', () => {
         notes: 'Updated notes',
       };
 
-      const report = errorCorrector.correctTodoUpdateParams(params);
+      const report = correctTodoUpdateParams(params);
 
       expect(report.hasCorrections).toBe(false);
     });
@@ -96,7 +91,7 @@ describe('ErrorCorrector', () => {
   describe('Invalid Project Reference Correction', () => {
     beforeEach(() => {
       // Set valid project IDs
-      errorCorrector.setValidProjectIds(['project-1', 'project-2']);
+      setValidProjectIds(['project-1', 'project-2']);
     });
 
     it('should remove invalid project reference', () => {
@@ -105,7 +100,7 @@ describe('ErrorCorrector', () => {
         projectId: 'invalid-project',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.INVALID_PROJECT_REFERENCE);
@@ -118,7 +113,7 @@ describe('ErrorCorrector', () => {
         projectId: 'project-1',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(false);
       expect(report.correctedData.projectId).toBe('project-1');
@@ -128,7 +123,7 @@ describe('ErrorCorrector', () => {
   describe('Invalid Area Reference Correction', () => {
     beforeEach(() => {
       // Set valid area IDs
-      errorCorrector.setValidAreaIds(['area-1', 'area-2']);
+      setValidAreaIds(['area-1', 'area-2']);
     });
 
     it('should remove invalid area reference', () => {
@@ -137,7 +132,7 @@ describe('ErrorCorrector', () => {
         areaId: 'invalid-area',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.INVALID_AREA_REFERENCE);
@@ -150,7 +145,7 @@ describe('ErrorCorrector', () => {
         areaId: 'area-1',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(false);
       expect(report.correctedData.areaId).toBe('area-1');
@@ -164,7 +159,7 @@ describe('ErrorCorrector', () => {
         tags: ['valid-tag', 'tag,with;invalid', 'another,tag'],
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections[0]?.type).toBe(CorrectionType.INVALID_TAG_NAME);
@@ -177,7 +172,7 @@ describe('ErrorCorrector', () => {
         tags: ['tag,1', 'tag;1', 'tag2'],
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.correctedData.tags).toEqual(['tag1', 'tag2']);
@@ -189,7 +184,7 @@ describe('ErrorCorrector', () => {
         tags: ['valid-tag', 'another_valid_tag', 'tag123'],
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(false);
     });
@@ -197,7 +192,7 @@ describe('ErrorCorrector', () => {
 
   describe('Multiple Corrections', () => {
     it('should apply multiple corrections in one operation', () => {
-      errorCorrector.setValidProjectIds(['project-1']);
+      setValidProjectIds(['project-1']);
 
       const params: TodosCreateParams = {
         title: '',
@@ -208,7 +203,7 @@ describe('ErrorCorrector', () => {
         tags: ['tag,1', 'tag;2'],
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
+      const report = correctTodoCreateParams(params);
 
       expect(report.hasCorrections).toBe(true);
       expect(report.corrections).toHaveLength(4);
@@ -238,8 +233,8 @@ describe('ErrorCorrector', () => {
         title: '',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
-      errorCorrector.logCorrections(report);
+      const report = correctTodoCreateParams(params);
+      logCorrections(report);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Applied corrections:'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('missing_title'));
@@ -250,8 +245,8 @@ describe('ErrorCorrector', () => {
         title: 'Valid TODO',
       };
 
-      const report = errorCorrector.correctTodoCreateParams(params);
-      errorCorrector.logCorrections(report);
+      const report = correctTodoCreateParams(params);
+      logCorrections(report);
 
       expect(consoleSpy).not.toHaveBeenCalled();
     });

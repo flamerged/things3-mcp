@@ -5,336 +5,263 @@ import {
   CorrectionType,
   CorrectionResult,
   CorrectionReport,
-  CorrectionStrategy,
 } from '../types/corrections.js';
 import { TodosCreateParams, TodosUpdateParams } from '../types/tools.js';
 import { cleanTagName } from './tag-validator.js';
 import { createLogger } from './logger.js';
 import type { AppleScriptBridge } from './applescript.js';
 
-// Interfaces for correction strategies
-interface DateParams {
-  whenDate?: string | null | undefined;
-  deadline?: string | null | undefined;
-}
+const logger = createLogger('error-correction');
 
-interface TitleParams {
-  title?: string;
-  notes?: string | null;
-}
+// Cache for valid IDs
+let validProjectIds: Set<string> = new Set();
+let validAreaIds: Set<string> = new Set();
 
-interface ProjectParams {
-  projectId?: string | null;
-}
-
-interface AreaParams {
-  areaId?: string | null;
-}
-
-interface TagParams {
-  tags?: string[];
+/**
+ * Update valid project IDs for reference validation
+ */
+export function setValidProjectIds(ids: string[]): void {
+  validProjectIds = new Set(ids);
 }
 
 /**
- * Corrects date conflicts where deadline is before when date
+ * Update valid area IDs for reference validation
  */
-class DateConflictCorrector implements CorrectionStrategy<DateParams> {
-  shouldCorrect(data: DateParams): boolean {
-    if (!data.whenDate || !data.deadline) return false;
-    
-    const whenDate = new Date(data.whenDate);
-    const deadline = new Date(data.deadline);
-    
-    return deadline < whenDate;
-  }
+export function setValidAreaIds(ids: string[]): void {
+  validAreaIds = new Set(ids);
+}
 
-  correct(data: DateParams): CorrectionResult | null {
-    if (!this.shouldCorrect(data)) return null;
-
-    const originalWhenDate = data.whenDate;
-    const originalDeadline = data.deadline;
+/**
+ * Refresh valid project and area IDs by fetching current data
+ */
+export async function refreshValidIds(bridge?: AppleScriptBridge): Promise<void> {
+  try {
+    // Use provided bridge or import and create new one
+    let scriptBridge = bridge;
+    if (!scriptBridge) {
+      const { AppleScriptBridge } = await import('../utils/applescript.js');
+      scriptBridge = new AppleScriptBridge();
+    }
     
-    // Swap the dates
-    data.whenDate = originalDeadline;
-    data.deadline = originalWhenDate;
-
-    return {
-      type: CorrectionType.DATE_CONFLICT,
-      field: 'whenDate/deadline',
-      originalValue: { whenDate: originalWhenDate, deadline: originalDeadline },
-      correctedValue: { whenDate: data.whenDate, deadline: data.deadline },
-      reason: 'Deadline cannot be before when date - dates have been swapped',
-    };
+    const templates = await import('../templates/applescript-templates.js');
+    
+    // Get current projects
+    const projectScript = templates.listProjects();
+    const projectResponse = await scriptBridge.execute(projectScript);
+    const projects = JSON.parse(projectResponse);
+    const projectIds = projects.map((p: { id: string }) => p.id);
+    setValidProjectIds(projectIds);
+    
+    // Get current areas
+    const areaScript = templates.listAreas();
+    const areaResponse = await scriptBridge.execute(areaScript);
+    const areas = JSON.parse(areaResponse);
+    const areaIds = areas.map((a: { id: string }) => a.id);
+    setValidAreaIds(areaIds);
+    
+  } catch (error) {
+    logger.warn('Failed to refresh valid IDs:', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 /**
- * Generates a title when missing
+ * Correct date conflicts where deadline is before when date
  */
-class MissingTitleCorrector implements CorrectionStrategy<TitleParams> {
-  shouldCorrect(data: TitleParams): boolean {
-    return !data.title || data.title.trim() === '';
-  }
+function correctDateConflict(data: { whenDate?: string | null; deadline?: string | null }): CorrectionResult | null {
+  if (!data.whenDate || !data.deadline) return null;
+  
+  const whenDate = new Date(data.whenDate);
+  const deadline = new Date(data.deadline);
+  
+  if (deadline >= whenDate) return null;
 
-  correct(data: TitleParams): CorrectionResult | null {
-    if (!this.shouldCorrect(data)) return null;
+  const originalWhenDate = data.whenDate;
+  const originalDeadline = data.deadline;
+  
+  // Swap the dates
+  data.whenDate = originalDeadline;
+  data.deadline = originalWhenDate;
 
-    const originalTitle = data.title;
-    
-    // Try to generate title from notes
-    if (data.notes && typeof data.notes === 'string' && data.notes.trim()) {
-      const firstLine = data.notes.trim().split('\n')[0];
-      if (firstLine) {
-        // Take first 50 characters of first line
-        data.title = firstLine.substring(0, 50).trim();
-        if (firstLine.length > 50) {
-          data.title += '...';
-        }
-      } else {
-        data.title = 'Untitled';
+  return {
+    type: CorrectionType.DATE_CONFLICT,
+    field: 'whenDate/deadline',
+    originalValue: { whenDate: originalWhenDate, deadline: originalDeadline },
+    correctedValue: { whenDate: data.whenDate, deadline: data.deadline },
+    reason: 'Deadline cannot be before when date - dates have been swapped',
+  };
+}
+
+/**
+ * Generate a title when missing
+ */
+function correctMissingTitle(data: { title?: string; notes?: string | null }): CorrectionResult | null {
+  if (data.title && data.title.trim() !== '') return null;
+
+  const originalTitle = data.title;
+  
+  // Try to generate title from notes
+  if (data.notes && typeof data.notes === 'string' && data.notes.trim()) {
+    const firstLine = data.notes.trim().split('\n')[0];
+    if (firstLine) {
+      // Take first 50 characters of first line
+      data.title = firstLine.substring(0, 50).trim();
+      if (firstLine.length > 50) {
+        data.title += '...';
       }
     } else {
       data.title = 'Untitled';
     }
-
-    return {
-      type: CorrectionType.MISSING_TITLE,
-      field: 'title',
-      originalValue: originalTitle,
-      correctedValue: data.title,
-      reason: (data.notes && typeof data.notes === 'string' && data.notes.trim())
-        ? 'Generated title from first line of notes'
-        : 'No title provided - using default',
-    };
+  } else {
+    data.title = 'Untitled';
   }
+
+  return {
+    type: CorrectionType.MISSING_TITLE,
+    field: 'title',
+    originalValue: originalTitle,
+    correctedValue: data.title,
+    reason: (data.notes && typeof data.notes === 'string' && data.notes.trim())
+      ? 'Generated title from first line of notes'
+      : 'No title provided - using default',
+  };
 }
 
 /**
- * Handles invalid project references
+ * Handle invalid project references
  */
-class InvalidProjectReferenceCorrector implements CorrectionStrategy<ProjectParams> {
-  private validProjectIds: Set<string> = new Set();
+function correctInvalidProjectReference(data: { projectId?: string | null }): CorrectionResult | null {
+  if (!data.projectId) return null;
+  // Temporarily disable project validation if no valid IDs are cached
+  if (validProjectIds.size === 0) return null;
+  if (validProjectIds.has(data.projectId)) return null;
 
-  setValidProjectIds(ids: string[]): void {
-    this.validProjectIds = new Set(ids);
-  }
+  const originalProjectId = data.projectId;
+  
+  // Move to inbox by removing project reference
+  data.projectId = null;
 
-  shouldCorrect(data: ProjectParams): boolean {
-    if (!data.projectId) return false;
-    // Temporarily disable project validation if no valid IDs are cached
-    if (this.validProjectIds.size === 0) return false;
-    return !this.validProjectIds.has(data.projectId);
-  }
-
-  correct(data: ProjectParams): CorrectionResult | null {
-    if (!this.shouldCorrect(data)) return null;
-
-    const originalProjectId = data.projectId;
-    
-    // Move to inbox by removing project reference
-    data.projectId = null;
-
-    return {
-      type: CorrectionType.INVALID_PROJECT_REFERENCE,
-      field: 'projectId',
-      originalValue: originalProjectId,
-      correctedValue: null,
-      reason: 'Invalid project ID - item will be created in Inbox',
-    };
-  }
+  return {
+    type: CorrectionType.INVALID_PROJECT_REFERENCE,
+    field: 'projectId',
+    originalValue: originalProjectId,
+    correctedValue: null,
+    reason: 'Invalid project ID - item will be created in Inbox',
+  };
 }
 
 /**
- * Handles invalid area references
+ * Handle invalid area references
  */
-class InvalidAreaReferenceCorrector implements CorrectionStrategy<AreaParams> {
-  private validAreaIds: Set<string> = new Set();
+function correctInvalidAreaReference(data: { areaId?: string | null }): CorrectionResult | null {
+  if (!data.areaId) return null;
+  if (validAreaIds.has(data.areaId)) return null;
 
-  setValidAreaIds(ids: string[]): void {
-    this.validAreaIds = new Set(ids);
-  }
+  const originalAreaId = data.areaId;
+  
+  // Remove invalid area reference
+  data.areaId = null;
 
-  shouldCorrect(data: AreaParams): boolean {
-    if (!data.areaId) return false;
-    return !this.validAreaIds.has(data.areaId);
-  }
-
-  correct(data: AreaParams): CorrectionResult | null {
-    if (!this.shouldCorrect(data)) return null;
-
-    const originalAreaId = data.areaId;
-    
-    // Remove invalid area reference
-    data.areaId = null;
-
-    return {
-      type: CorrectionType.INVALID_AREA_REFERENCE,
-      field: 'areaId',
-      originalValue: originalAreaId,
-      correctedValue: null,
-      reason: 'Invalid area ID - reference removed',
-    };
-  }
+  return {
+    type: CorrectionType.INVALID_AREA_REFERENCE,
+    field: 'areaId',
+    originalValue: originalAreaId,
+    correctedValue: null,
+    reason: 'Invalid area ID - reference removed',
+  };
 }
 
 /**
- * Cleans invalid characters from tag names
+ * Clean invalid characters from tag names
  */
-class TagNameCleaner implements CorrectionStrategy<TagParams> {
-  shouldCorrect(data: TagParams): boolean {
-    if (!data.tags || !Array.isArray(data.tags)) return false;
-    
-    return data.tags.some((tag: string) => tag !== cleanTagName(tag));
-  }
+function correctTagNames(data: { tags?: string[] }): CorrectionResult | null {
+  if (!data.tags || !Array.isArray(data.tags)) return null;
+  
+  const needsCleaning = data.tags.some((tag: string) => tag !== cleanTagName(tag));
+  if (!needsCleaning) return null;
 
-  correct(data: TagParams): CorrectionResult | null {
-    if (!this.shouldCorrect(data)) return null;
+  const originalTags = [...data.tags];
+  const cleanedTags = data.tags.map((tag: string) => cleanTagName(tag));
+  
+  // Remove duplicates after cleaning
+  data.tags = [...new Set(cleanedTags)];
 
-    const originalTags = [...(data.tags || [])];
-    const cleanedTags = (data.tags || []).map((tag: string) => cleanTagName(tag));
-    
-    // Remove duplicates after cleaning
-    data.tags = [...new Set(cleanedTags)];
-
-    return {
-      type: CorrectionType.INVALID_TAG_NAME,
-      field: 'tags',
-      originalValue: originalTags,
-      correctedValue: data.tags,
-      reason: 'Removed invalid characters from tag names',
-    };
-  }
+  return {
+    type: CorrectionType.INVALID_TAG_NAME,
+    field: 'tags',
+    originalValue: originalTags,
+    correctedValue: data.tags,
+    reason: 'Removed invalid characters from tag names',
+  };
 }
 
 /**
- * Main error corrector that applies all correction strategies
+ * Correct TODO creation parameters
  */
-export class ErrorCorrector {
-  private dateCorrector = new DateConflictCorrector();
-  private titleCorrector = new MissingTitleCorrector();
-  private projectCorrector = new InvalidProjectReferenceCorrector();
-  private areaCorrector = new InvalidAreaReferenceCorrector();
-  private tagCorrector = new TagNameCleaner();
-  private logger = createLogger('error-correction');
+export function correctTodoCreateParams(params: TodosCreateParams): CorrectionReport<TodosCreateParams> {
+  const corrections: CorrectionResult[] = [];
+  const correctedData = { ...params };
 
-  /**
-   * Update valid project IDs for reference validation
-   */
-  setValidProjectIds(ids: string[]): void {
-    this.projectCorrector.setValidProjectIds(ids);
-  }
+  // Apply all corrections
+  const titleCorrection = correctMissingTitle(correctedData);
+  if (titleCorrection) corrections.push(titleCorrection);
 
-  /**
-   * Update valid area IDs for reference validation
-   */
-  setValidAreaIds(ids: string[]): void {
-    this.areaCorrector.setValidAreaIds(ids);
-  }
+  const dateCorrection = correctDateConflict(correctedData);
+  if (dateCorrection) corrections.push(dateCorrection);
 
-  /**
-   * Refresh valid project and area IDs by fetching current data
-   */
-  async refreshValidIds(bridge?: AppleScriptBridge): Promise<void> {
-    try {
-      // Use provided bridge or import and create new one
-      let scriptBridge = bridge;
-      if (!scriptBridge) {
-        const { AppleScriptBridge } = await import('../utils/applescript.js');
-        scriptBridge = new AppleScriptBridge();
-      }
-      
-      const templates = await import('../templates/applescript-templates.js');
-      
-      // Get current projects
-      const projectScript = templates.listProjects();
-      const projectResponse = await scriptBridge.execute(projectScript);
-      const projects = JSON.parse(projectResponse);
-      const projectIds = projects.map((p: { id: string }) => p.id);
-      this.setValidProjectIds(projectIds);
-      
-      // Get current areas
-      const areaScript = templates.listAreas();
-      const areaResponse = await scriptBridge.execute(areaScript);
-      const areas = JSON.parse(areaResponse);
-      const areaIds = areas.map((a: { id: string }) => a.id);
-      this.setValidAreaIds(areaIds);
-      
-    } catch (error) {
-      this.logger.warn('Failed to refresh valid IDs:', { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
+  const projectCorrection = correctInvalidProjectReference(correctedData);
+  if (projectCorrection) corrections.push(projectCorrection);
 
-  /**
-   * Correct TODO creation parameters
-   */
-  correctTodoCreateParams(params: TodosCreateParams): CorrectionReport<TodosCreateParams> {
-    const corrections: CorrectionResult[] = [];
-    const correctedData = { ...params };
+  const areaCorrection = correctInvalidAreaReference(correctedData);
+  if (areaCorrection) corrections.push(areaCorrection);
 
-    // Apply all corrections
-    const strategies = [
-      this.titleCorrector,
-      this.dateCorrector,
-      this.projectCorrector,
-      this.areaCorrector,
-      this.tagCorrector,
-    ];
+  const tagCorrection = correctTagNames(correctedData);
+  if (tagCorrection) corrections.push(tagCorrection);
 
-    for (const strategy of strategies) {
-      const correction = strategy.correct(correctedData as never);
-      if (correction) {
-        corrections.push(correction);
-      }
-    }
+  return {
+    hasCorrections: corrections.length > 0,
+    corrections,
+    correctedData,
+  };
+}
 
-    return {
-      hasCorrections: corrections.length > 0,
-      corrections,
-      correctedData,
-    };
-  }
+/**
+ * Correct TODO update parameters
+ */
+export function correctTodoUpdateParams(params: TodosUpdateParams): CorrectionReport<TodosUpdateParams> {
+  const corrections: CorrectionResult[] = [];
+  const correctedData = { ...params };
 
-  /**
-   * Correct TODO update parameters
-   */
-  correctTodoUpdateParams(params: TodosUpdateParams): CorrectionReport<TodosUpdateParams> {
-    const corrections: CorrectionResult[] = [];
-    const correctedData = { ...params };
+  // For updates, we don't correct missing title (it's optional)
+  const dateCorrection = correctDateConflict(correctedData);
+  if (dateCorrection) corrections.push(dateCorrection);
 
-    // For updates, we don't correct missing title (it's optional)
-    const strategies = [
-      this.dateCorrector,
-      this.projectCorrector,
-      this.areaCorrector,
-      this.tagCorrector,
-    ];
+  const projectCorrection = correctInvalidProjectReference(correctedData);
+  if (projectCorrection) corrections.push(projectCorrection);
 
-    for (const strategy of strategies) {
-      const correction = strategy.correct(correctedData as never);
-      if (correction) {
-        corrections.push(correction);
-      }
-    }
+  const areaCorrection = correctInvalidAreaReference(correctedData);
+  if (areaCorrection) corrections.push(areaCorrection);
 
-    return {
-      hasCorrections: corrections.length > 0,
-      corrections,
-      correctedData,
-    };
-  }
+  const tagCorrection = correctTagNames(correctedData);
+  if (tagCorrection) corrections.push(tagCorrection);
 
-  /**
-   * Log corrections for debugging
-   */
-  logCorrections<T>(report: CorrectionReport<T>): void {
-    if (!report.hasCorrections) return;
+  return {
+    hasCorrections: corrections.length > 0,
+    corrections,
+    correctedData,
+  };
+}
 
-    this.logger.info('Applied corrections:');
-    for (const correction of report.corrections) {
-      this.logger.info(`- ${correction.type}: ${correction.reason}`);
-      this.logger.debug(`  Field: ${correction.field}`);
-      this.logger.debug(`  Original: ${JSON.stringify(correction.originalValue)}`);
-      this.logger.debug(`  Corrected: ${JSON.stringify(correction.correctedValue)}`);
-    }
+/**
+ * Log corrections for debugging
+ */
+export function logCorrections<T>(report: CorrectionReport<T>): void {
+  if (!report.hasCorrections) return;
+
+  logger.info('Applied corrections:');
+  for (const correction of report.corrections) {
+    logger.info(`- ${correction.type}: ${correction.reason}`);
+    logger.debug(`  Field: ${correction.field}`);
+    logger.debug(`  Original: ${JSON.stringify(correction.originalValue)}`);
+    logger.debug(`  Corrected: ${JSON.stringify(correction.correctedValue)}`);
   }
 }

@@ -62,7 +62,8 @@ export class ToolRegistry {
   /**
    * Execute a tool by name with arguments
    */
-  async executeTool(name: string, args: unknown): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async executeTool(name: string, args: any): Promise<any> {
     const handler = this.getHandler(name);
     
     if (!handler) {
