@@ -1,7 +1,7 @@
 // ABOUTME: Area management tools for Things3 integration
 // ABOUTME: Provides list and create operations for areas
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import { 
   AreasCreateParams,
   AreasCreateResult,
@@ -10,13 +10,10 @@ import {
   Area
 } from '../types/index.js';
 import { listAreas, createArea, deleteAreas } from '../templates/applescript-templates.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
 
-export class AreaTools {
-  private bridge: AppleScriptBridge;
-  
+export class AreaTools extends BaseTool {
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    super('areas');
   }
 
   /**
@@ -71,56 +68,65 @@ export class AreaTools {
   }
 
   /**
-   * Get all area tools for registration
+   * Get tool registrations for the registry
    */
-  static getTools(areaTools: AreaTools): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'areas_list',
-        description: 'List all areas in Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            includeHidden: { 
-              type: 'boolean',
-              description: 'Include hidden areas in the list'
+        handler: this.listAreas.bind(this),
+        toolDefinition: {
+          name: 'areas_list',
+          description: 'List all areas in Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              includeHidden: { 
+                type: 'boolean',
+                description: 'Include hidden areas in the list'
+              }
             }
           }
-        },
-        handler: async () => areaTools.listAreas()
+        }
       },
       {
         name: 'areas_create',
-        description: 'Create a new area in Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            name: { 
-              type: 'string',
-              description: 'The name of the area to create'
-            }
-          },
-          required: ['name']
-        },
-        handler: async (params: unknown) => areaTools.createArea(params as AreasCreateParams)
+        handler: this.createArea.bind(this),
+        toolDefinition: {
+          name: 'areas_create',
+          description: 'Create a new area in Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              name: { 
+                type: 'string',
+                description: 'The name of the area to create'
+              }
+            },
+            required: ['name']
+          }
+        }
       },
       {
         name: 'areas_delete',
-        description: 'Delete areas in Things3 (moves to trash)',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            ids: {
-              oneOf: [
-                { type: 'string' },
-                { type: 'array', items: { type: 'string' } }
-              ],
-              description: 'Area ID or array of area IDs to delete'
-            }
-          },
-          required: ['ids']
-        },
-        handler: async (params: unknown) => areaTools.deleteAreas(params as AreasDeleteParams)
+        handler: this.deleteAreas.bind(this),
+        toolDefinition: {
+          name: 'areas_delete',
+          description: 'Delete areas in Things3 (moves to trash)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              ids: {
+                oneOf: [
+                  { type: 'string' },
+                  { type: 'array', items: { type: 'string' } }
+                ],
+                description: 'Area ID or array of area IDs to delete'
+              }
+            },
+            required: ['ids']
+          }
+        }
       }
     ];
   }

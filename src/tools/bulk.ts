@@ -1,13 +1,13 @@
 // ABOUTME: Bulk operation tools for Things3 TODOs
 // ABOUTME: Provides bulk move and bulk date update operations
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import { BulkMoveParams, BulkUpdateDatesParams } from '../types/tools.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
 
-export class BulkTools {
+export class BulkTools extends BaseTool {
   constructor() {
-    // Using URL scheme instead of AppleScript bridge
+    super('bulk');
   }
 
   /**
@@ -46,72 +46,80 @@ export class BulkTools {
   }
 
   /**
-   * Get tool definitions for registration
+   * Get tool registrations for the registry
    */
-  getTools(): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'bulk_move',
-        description: 'Move multiple TODOs to a project or area',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            todoIds: {
-              oneOf: [
-                {
-                  type: 'string',
-                  description: 'Single TODO ID'
-                },
-                {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Array of TODO IDs'
-                }
-              ],
-              description: 'TODO ID(s) to move'
+        handler: this.move.bind(this),
+        toolDefinition: {
+          name: 'bulk_move',
+          description: 'Move multiple TODOs to a project or area',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              todoIds: {
+                oneOf: [
+                  {
+                    type: 'string',
+                    description: 'Single TODO ID'
+                  },
+                  {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Array of TODO IDs'
+                  }
+                ],
+                description: 'TODO ID(s) to move'
+              },
+              projectId: {
+                type: 'string',
+                description: 'The ID of the project to move the TODOs to'
+              },
+              areaId: {
+                type: 'string',
+                description: 'The ID of the area to move the TODOs to'
+              }
             },
-            projectId: {
-              type: 'string',
-              description: 'The ID of the project to move the TODOs to'
-            },
-            areaId: {
-              type: 'string',
-              description: 'The ID of the area to move the TODOs to'
-            }
-          },
-          required: ['todoIds']
+            required: ['todoIds']
+          }
         }
       },
       {
         name: 'bulk_updateDates',
-        description: 'Update dates for multiple TODOs at once',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            todoIds: {
-              oneOf: [
-                {
-                  type: 'string',
-                  description: 'Single TODO ID'
-                },
-                {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Array of TODO IDs'
-                }
-              ],
-              description: 'TODO ID(s) to update'
+        handler: this.updateDates.bind(this),
+        toolDefinition: {
+          name: 'bulk_updateDates',
+          description: 'Update dates for multiple TODOs at once',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              todoIds: {
+                oneOf: [
+                  {
+                    type: 'string',
+                    description: 'Single TODO ID'
+                  },
+                  {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Array of TODO IDs'
+                  }
+                ],
+                description: 'TODO ID(s) to update'
+              },
+              whenDate: {
+                type: ['string', 'null'],
+                description: 'The when date (ISO 8601 format) - null to clear'
+              },
+              deadline: {
+                type: ['string', 'null'],
+                description: 'The deadline (ISO 8601 format) - null to clear'
+              }
             },
-            whenDate: {
-              type: ['string', 'null'],
-              description: 'The when date (ISO 8601 format) - null to clear'
-            },
-            deadline: {
-              type: ['string', 'null'],
-              description: 'The deadline (ISO 8601 format) - null to clear'
-            }
-          },
-          required: ['todoIds']
+            required: ['todoIds']
+          }
         }
       }
     ];

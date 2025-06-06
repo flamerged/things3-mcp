@@ -30,9 +30,9 @@ describe('Things3Server', () => {
     await expect(server.stop()).resolves.not.toThrow();
   });
   
-  it('should register TODO and Project tools', () => {
+  it('should register all 25 tools via registry pattern', () => {
     // The logger should have logged the registration messages
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registering Things3 tools...'));
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registered 13 refactored tools'));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Registered 25 tools via registry'));
   });
 });

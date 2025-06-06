@@ -1,15 +1,12 @@
 // ABOUTME: System utility tools for Things3 MCP server
 // ABOUTME: Provides Things3 launch functionality
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import * as templates from '../templates/applescript-templates.js';
 
-export class SystemTools {
-  private bridge: AppleScriptBridge;
-
+export class SystemTools extends BaseTool {
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    super('system');
   }
 
 
@@ -39,16 +36,20 @@ export class SystemTools {
   }
 
   /**
-   * Get tool definitions for registration
+   * Get tool registrations for the registry
    */
-  getTools(): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'system_launch',
-        description: 'Launch Things3 application if not already running',
-        inputSchema: {
-          type: 'object',
-          properties: {}
+        handler: this.launch.bind(this),
+        toolDefinition: {
+          name: 'system_launch',
+          description: 'Launch Things3 application if not already running',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
         }
       }
     ];

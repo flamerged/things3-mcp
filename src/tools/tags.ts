@@ -1,7 +1,7 @@
 // ABOUTME: Tag management tools for Things3 integration
 // ABOUTME: Provides list, create, add, and remove operations with hierarchy support
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import { 
   TagsCreateParams,
   TagsCreateResult,
@@ -24,15 +24,40 @@ import {
   cleanTagName, 
   cleanTags
 } from '../utils/tag-validator.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
-import { createLogger } from '../utils/logger.js';
 
-export class TagTools {
-  private bridge: AppleScriptBridge;
-  private logger = createLogger('tags');
-
+export class TagTools extends BaseTool {
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    super('tags');
+  }
+
+  /**
+   * Override ensureTagsExist to provide the actual implementation
+   * This avoids circular dependencies while still providing the functionality
+   */
+  protected async ensureTagsExist(tags: string[]): Promise<void> {
+    if (!tags || tags.length === 0) return;
+    
+    try {
+      // Get existing tags
+      const existingTagsResult = await this.listTags();
+      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
+      
+      // Find missing tags
+      const missingTags = tags.filter(tag => !existingTagNames.has(tag));
+      
+      if (missingTags.length > 0) {
+        this.logger.info(`Creating ${missingTags.length} missing tags: ${missingTags.join(', ')}`);
+        
+        // Create missing tags
+        for (const tagName of missingTags) {
+          await this.createTag({ name: tagName });
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to ensure tags exist, continuing with operation', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
   }
 
   /**
@@ -94,26 +119,7 @@ export class TagTools {
     }
 
     // Ensure all tags exist before adding them
-    try {
-      const existingTagsResult = await this.listTags();
-      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
-      
-      // Find missing tags and create them
-      const missingTags = cleanedTags.filter(tag => !existingTagNames.has(tag));
-      
-      if (missingTags.length > 0) {
-        this.logger.info(`Creating ${missingTags.length} missing tags before adding: ${missingTags.join(', ')}`);
-        
-        // Create missing tags
-        for (const tagName of missingTags) {
-          await this.createTag({ name: tagName });
-        }
-      }
-    } catch (error) {
-      this.logger.warn('Failed to ensure tags exist, continuing with add operation', { 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
-    }
+    await this.ensureTagsExist(cleanedTags);
 
     try {
       // Use AppleScript for tag operations (handles both TODOs and Projects)
@@ -217,97 +223,112 @@ export class TagTools {
   }
 
   /**
-   * Get all tag tools for registration
+   * Get tool registrations for the registry
    */
-  static getTools(tagTools: TagTools): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'tags_list',
-        description: 'List all tags in Things3 with hierarchy information',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        },
-        handler: async () => tagTools.listTags()
+        handler: this.listTags.bind(this),
+        toolDefinition: {
+          name: 'tags_list',
+          description: 'List all tags in Things3 with hierarchy information',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        }
       },
       {
         name: 'tags_create',
-        description: 'Create a new tag in Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            name: { 
-              type: 'string',
-              description: 'The tag name'
+        handler: this.createTag.bind(this),
+        toolDefinition: {
+          name: 'tags_create',
+          description: 'Create a new tag in Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              name: { 
+                type: 'string',
+                description: 'The tag name'
+              },
+              parentTagId: { 
+                type: 'string',
+                description: 'Optional parent tag ID for creating nested tags'
+              }
             },
-            parentTagId: { 
-              type: 'string',
-              description: 'Optional parent tag ID for creating nested tags'
-            }
-          },
-          required: ['name']
-        },
-        handler: async (params: unknown) => tagTools.createTag(params as TagsCreateParams)
+            required: ['name']
+          }
+        }
       },
       {
         name: 'tags_add',
-        description: 'Add tags to TODOs or projects',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            itemIds: { 
-              type: 'array',
-              items: { type: 'string' },
-              description: 'IDs of TODOs or projects to add tags to'
+        handler: this.addTags.bind(this),
+        toolDefinition: {
+          name: 'tags_add',
+          description: 'Add tags to TODOs or projects',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              itemIds: { 
+                type: 'array',
+                items: { type: 'string' },
+                description: 'IDs of TODOs or projects to add tags to'
+              },
+              tags: { 
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Tag names to add'
+              }
             },
-            tags: { 
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Tag names to add'
-            }
-          },
-          required: ['itemIds', 'tags']
-        },
-        handler: async (params: unknown) => tagTools.addTags(params as TagsAddParams)
+            required: ['itemIds', 'tags']
+          }
+        }
       },
       {
         name: 'tags_remove',
-        description: 'Remove tags from TODOs or projects',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            itemIds: { 
-              type: 'array',
-              items: { type: 'string' },
-              description: 'IDs of TODOs or projects to remove tags from'
+        handler: this.removeTags.bind(this),
+        toolDefinition: {
+          name: 'tags_remove',
+          description: 'Remove tags from TODOs or projects',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              itemIds: { 
+                type: 'array',
+                items: { type: 'string' },
+                description: 'IDs of TODOs or projects to remove tags from'
+              },
+              tags: { 
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Tag names to remove'
+              }
             },
-            tags: { 
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Tag names to remove'
-            }
-          },
-          required: ['itemIds', 'tags']
-        },
-        handler: async (params: unknown) => tagTools.removeTags(params as TagsRemoveParams)
+            required: ['itemIds', 'tags']
+          }
+        }
       },
       {
         name: 'tags_delete',
-        description: 'Delete tags completely from Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            names: {
-              oneOf: [
-                { type: 'string' },
-                { type: 'array', items: { type: 'string' } }
-              ],
-              description: 'Tag name(s) to delete completely from Things3'
-            }
-          },
-          required: ['names']
-        },
-        handler: async (params: unknown) => tagTools.deleteTags(params as TagsDeleteParams)
+        handler: this.deleteTags.bind(this),
+        toolDefinition: {
+          name: 'tags_delete',
+          description: 'Delete tags completely from Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              names: {
+                oneOf: [
+                  { type: 'string' },
+                  { type: 'array', items: { type: 'string' } }
+                ],
+                description: 'Tag name(s) to delete completely from Things3'
+              }
+            },
+            required: ['names']
+          }
+        }
       }
     ];
   }

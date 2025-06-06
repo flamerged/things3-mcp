@@ -1,18 +1,15 @@
 // ABOUTME: Logbook search tool for Things3 completed items
 // ABOUTME: Provides searching through completed tasks with date range filtering
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import * as templates from '../templates/applescript-templates.js';
 import { LogbookSearchParams } from '../types/tools.js';
 import { TodoItem } from '../types/models.js';
 import { isoToAppleScriptDate } from '../utils/date-handler.js';
 
-export class LogbookTools {
-  private bridge: AppleScriptBridge;
-
+export class LogbookTools extends BaseTool {
   constructor() {
-    this.bridge = new AppleScriptBridge();
+    super('logbook');
   }
 
   /**
@@ -61,33 +58,37 @@ export class LogbookTools {
   }
 
   /**
-   * Get tool definitions for registration
+   * Get tool registrations for the registry
    */
-  getTools(): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'logbook_search',
-        description: 'Search completed items in the logbook with optional filters',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            searchText: {
-              type: 'string',
-              description: 'Text to search for in title or notes'
-            },
-            fromDate: {
-              type: 'string',
-              description: 'Start date for completion date filter (ISO 8601 format)'
-            },
-            toDate: {
-              type: 'string',
-              description: 'End date for completion date filter (ISO 8601 format)'
-            },
-            limit: {
-              type: 'number',
-              description: 'Maximum number of results to return (default: 100)',
-              minimum: 1,
-              maximum: 1000
+        handler: this.search.bind(this),
+        toolDefinition: {
+          name: 'logbook_search',
+          description: 'Search completed items in the logbook with optional filters',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              searchText: {
+                type: 'string',
+                description: 'Text to search for in title or notes'
+              },
+              fromDate: {
+                type: 'string',
+                description: 'Start date for completion date filter (ISO 8601 format)'
+              },
+              toDate: {
+                type: 'string',
+                description: 'End date for completion date filter (ISO 8601 format)'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of results to return (default: 100)',
+                minimum: 1,
+                maximum: 1000
+              }
             }
           }
         }
