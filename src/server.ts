@@ -5,7 +5,6 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { 
-  ProjectsListParams, ProjectsGetParams, ProjectsCreateParams, ProjectsUpdateParams, ProjectsCompleteParams, ProjectsDeleteParams,
   AreasCreateParams, AreasDeleteParams,
   TagsCreateParams, TagsAddParams, TagsRemoveParams, TagsDeleteParams,
   BulkMoveParams, BulkUpdateDatesParams,
@@ -67,16 +66,16 @@ export class Things3Server {
     
     // Register refactored tools with the registry
     this.registry.registerTool(this.todosTools);
+    this.registry.registerTool(this.projectTools);
     
     // Get legacy tools (to be refactored later)
-    const projectTools = ProjectTools.getTools(this.projectTools);
     const areaTools = AreaTools.getTools(this.areaTools);
     const tagTools = TagTools.getTools(this.tagTools);
     const bulkTools = this.bulkTools.getTools();
     const logbookTools = this.logbookTools.getTools();
     const systemTools = this.systemTools.getTools();
     
-    const legacyTools = [...projectTools, ...areaTools, ...tagTools, ...bulkTools, ...logbookTools, ...systemTools];
+    const legacyTools = [...areaTools, ...tagTools, ...bulkTools, ...logbookTools, ...systemTools];
     
     // Combine registry tools and legacy tools for capabilities
     const allTools = [...this.registry.getToolDefinitions(), ...legacyTools];
@@ -112,20 +111,6 @@ export class Things3Server {
       
       // Fall back to switch statement for non-refactored tools
       switch (name) {
-        
-        // Project tools
-        case 'projects_list':
-          return { toolResult: await this.projectTools.listProjects(args as unknown as ProjectsListParams) };
-        case 'projects_get':
-          return { toolResult: await this.projectTools.getProject(args as unknown as ProjectsGetParams) };
-        case 'projects_create':
-          return { toolResult: await this.projectTools.createProject(args as unknown as ProjectsCreateParams) };
-        case 'projects_update':
-          return { toolResult: await this.projectTools.updateProject(args as unknown as ProjectsUpdateParams) };
-        case 'projects_complete':
-          return { toolResult: await this.projectTools.completeProject(args as unknown as ProjectsCompleteParams) };
-        case 'projects_delete':
-          return { toolResult: await this.projectTools.deleteProjects(args as unknown as ProjectsDeleteParams) };
         
         // Area tools
         case 'areas_list':

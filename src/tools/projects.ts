@@ -1,7 +1,7 @@
 // ABOUTME: Project management tools for Things3 integration
 // ABOUTME: Provides list, get, create, update, and complete operations
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { BaseTool, ToolRegistration } from '../base/tool-base.js';
 import { 
   ProjectsListParams, 
   ProjectsGetParams,
@@ -18,49 +18,13 @@ import {
   getProjectById,
   deleteProjects
 } from '../templates/applescript-templates.js';
-import { AppleScriptBridge } from '../utils/applescript.js';
 import { urlSchemeHandler } from '../utils/url-scheme.js';
-import { TagTools } from './tags.js';
-import { createLogger } from '../utils/logger.js';
 
-export class ProjectTools {
-  private bridge: AppleScriptBridge;
-  private tagTools: TagTools;
-  private logger = createLogger('projects');
-  
+export class ProjectTools extends BaseTool {
   constructor() {
-    this.bridge = new AppleScriptBridge();
-    this.tagTools = new TagTools();
+    super('projects');
   }
 
-  /**
-   * Ensure tags exist in Things3, creating them if necessary
-   */
-  private async ensureTagsExist(tags: string[]): Promise<void> {
-    if (!tags || tags.length === 0) return;
-    
-    try {
-      // Get existing tags
-      const existingTagsResult = await this.tagTools.listTags();
-      const existingTagNames = new Set(existingTagsResult.tags.map((tag: { name: string }) => tag.name));
-      
-      // Find missing tags
-      const missingTags = tags.filter(tag => !existingTagNames.has(tag));
-      
-      if (missingTags.length > 0) {
-        this.logger.info(`Creating ${missingTags.length} missing tags for project: ${missingTags.join(', ')}`);
-        
-        // Create missing tags
-        for (const tagName of missingTags) {
-          await this.tagTools.createTag({ name: tagName });
-        }
-      }
-    } catch (error) {
-      this.logger.warn('Failed to ensure tags exist, continuing with project operation', { 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
-    }
-  }
 
   /**
    * List all projects with optional filtering
@@ -198,55 +162,64 @@ export class ProjectTools {
   }
 
   /**
-   * Get all project tools for registration
+   * Get tool registrations for the registry
    */
-  static getTools(projectTools: ProjectTools): Tool[] {
+  getToolRegistrations(): ToolRegistration[] {
     return [
       {
         name: 'projects_list',
-        description: 'List all projects in Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            areaId: { 
-              type: 'string',
-              description: 'Filter projects by area ID'
-            },
-            includeCompleted: { 
-              type: 'boolean',
-              description: 'Include completed projects in the list'
+        handler: this.listProjects.bind(this),
+        toolDefinition: {
+          name: 'projects_list',
+          description: 'List all projects in Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              areaId: { 
+                type: 'string',
+                description: 'Filter projects by area ID'
+              },
+              includeCompleted: { 
+                type: 'boolean',
+                description: 'Include completed projects in the list'
+              }
             }
           }
-        },
-        handler: async (params: unknown) => projectTools.listProjects(params as ProjectsListParams)
+        }
       },
       {
         name: 'projects_get',
-        description: 'Get detailed information about a specific project',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { 
-              type: 'string',
-              description: 'The project ID'
-            }
-          },
-          required: ['id']
-        },
-        handler: async (params: unknown) => projectTools.getProject(params as ProjectsGetParams)
+        handler: this.getProject.bind(this),
+        toolDefinition: {
+          name: 'projects_get',
+          description: 'Get detailed information about a specific project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: { 
+                type: 'string',
+                description: 'The project ID'
+              }
+            },
+            required: ['id']
+          }
+        }
       },
       {
         name: 'projects_create',
-        description: 'Create a new project in Things3',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            name: { 
-              type: 'string',
-              description: 'The project name'
-            },
-            notes: { 
-              type: 'string',
+        handler: this.createProject.bind(this),
+        toolDefinition: {
+          name: 'projects_create',
+          description: 'Create a new project in Things3',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              name: { 
+                type: 'string',
+                description: 'The project name'
+              },
+              notes: { 
+                type: 'string',
               description: 'Optional notes for the project'
             },
             whenDate: { 
@@ -273,81 +246,90 @@ export class ProjectTools {
             }
           },
           required: ['name']
-        },
-        handler: async (params: unknown) => projectTools.createProject(params as ProjectsCreateParams)
+          }
+        }
       },
       {
         name: 'projects_update',
-        description: 'Update an existing project',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { 
-              type: 'string',
-              description: 'The project ID to update'
+        handler: this.updateProject.bind(this),
+        toolDefinition: {
+          name: 'projects_update',
+          description: 'Update an existing project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: { 
+                type: 'string',
+                description: 'The project ID to update'
+              },
+              name: { 
+                type: 'string',
+                description: 'New project name'
+              },
+              notes: { 
+                type: ['string', 'null'],
+                description: 'New notes (null to clear)'
+              },
+              whenDate: { 
+                type: ['string', 'null'],
+                description: 'New start date (ISO 8601, null to clear)'
+              },
+              deadline: { 
+                type: ['string', 'null'],
+                description: 'New deadline (ISO 8601, null to clear)'
+              },
+              tags: { 
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Replace all tags with these tags'
+              },
+              areaId: { 
+                type: ['string', 'null'],
+                description: 'Move to new area (null to remove from area)'
+              }
             },
-            name: { 
-              type: 'string',
-              description: 'New project name'
-            },
-            notes: { 
-              type: ['string', 'null'],
-              description: 'New notes (null to clear)'
-            },
-            whenDate: { 
-              type: ['string', 'null'],
-              description: 'New start date (ISO 8601, null to clear)'
-            },
-            deadline: { 
-              type: ['string', 'null'],
-              description: 'New deadline (ISO 8601, null to clear)'
-            },
-            tags: { 
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Replace all tags with these tags'
-            },
-            areaId: { 
-              type: ['string', 'null'],
-              description: 'Move to new area (null to remove from area)'
-            }
-          },
-          required: ['id']
-        },
-        handler: async (params: unknown) => projectTools.updateProject(params as ProjectsUpdateParams)
+            required: ['id']
+          }
+        }
       },
       {
         name: 'projects_complete',
-        description: 'Mark a project as completed',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { 
-              type: 'string',
-              description: 'The project ID to complete'
-            }
-          },
-          required: ['id']
-        },
-        handler: async (params: unknown) => projectTools.completeProject(params as ProjectsCompleteParams)
+        handler: this.completeProject.bind(this),
+        toolDefinition: {
+          name: 'projects_complete',
+          description: 'Mark a project as completed',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: { 
+                type: 'string',
+                description: 'The project ID to complete'
+              }
+            },
+            required: ['id']
+          }
+        }
       },
       {
         name: 'projects_delete',
-        description: 'Delete projects in Things3 (moves to trash)',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            ids: {
-              oneOf: [
-                { type: 'string' },
-                { type: 'array', items: { type: 'string' } }
-              ],
-              description: 'Project ID or array of project IDs to delete'
-            }
-          },
-          required: ['ids']
-        },
-        handler: async (params: unknown) => projectTools.deleteProjects(params as ProjectsDeleteParams)
+        handler: this.deleteProjects.bind(this),
+        toolDefinition: {
+          name: 'projects_delete',
+          description: 'Delete projects in Things3 (moves to trash)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              ids: {
+                oneOf: [
+                  { type: 'string' },
+                  { type: 'array', items: { type: 'string' } }
+                ],
+                description: 'Project ID or array of project IDs to delete'
+              }
+            },
+            required: ['ids']
+          }
+        }
       }
     ];
   }
