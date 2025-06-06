@@ -295,7 +295,7 @@ export class CircuitBreaker {
   /**
    * Get circuit breaker status
    */
-  getStatus() {
+  getStatus(): { state: string; failureCount: number; lastFailureTime: number } {
     return {
       state: this.state,
       failureCount: this.failureCount,
@@ -317,11 +317,11 @@ export class CircuitBreaker {
 /**
  * Decorator for adding retry logic to class methods
  */
-export function Retry(options?: RetryOptions) {
-  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) {
+export function Retry(options?: RetryOptions): (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => void {
+  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
     const originalMethod = descriptor.value;
     
-    descriptor.value = async function (...args: unknown[]) {
+    descriptor.value = async function (...args: unknown[]): Promise<unknown> {
       return withRetry(
         () => originalMethod.apply(this, args),
         options

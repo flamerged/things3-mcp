@@ -62,7 +62,7 @@ export class ToolRegistry {
   /**
    * Execute a tool by name with arguments
    */
-  async executeTool(name: string, args: any): Promise<any> {
+  async executeTool(name: string, args: unknown): Promise<unknown> {
     const handler = this.getHandler(name);
     
     if (!handler) {

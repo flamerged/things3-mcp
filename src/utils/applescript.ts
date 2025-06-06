@@ -3,22 +3,12 @@
 
 import { spawn } from 'child_process';
 import { ErrorType, Things3Error } from '../types/index.js';
-import { AppleScriptPool } from './connection-pool.js';
 
 /**
  * Bridge class for executing AppleScript commands
  */
 export class AppleScriptBridge {
   private readonly defaultTimeout = 30000; // 30 seconds
-  private pool?: AppleScriptPool;
-  
-  /**
-   * Enable connection pooling for improved performance
-   * @param pool Optional AppleScript process pool
-   */
-  setPool(pool: AppleScriptPool): void {
-    this.pool = pool;
-  }
 
   /**
    * Execute an AppleScript and return the result
@@ -36,16 +26,6 @@ export class AppleScriptBridge {
    * @returns The script output as a string
    */
   async executeWithTimeout(script: string, timeout: number): Promise<string> {
-    // Use connection pool if available
-    if (this.pool) {
-      try {
-        return await this.pool.execute(script);
-      } catch (error) {
-        // Fall back to direct execution on pool errors
-        console.warn('Connection pool error, falling back to direct execution:', error);
-      }
-    }
-    
     return new Promise((resolve, reject) => {
       const osascript = spawn('osascript', ['-e', script]);
       

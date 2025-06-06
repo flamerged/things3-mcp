@@ -8,7 +8,7 @@ import { createLogger } from '../utils/logger.js';
 /**
  * Tool handler function type
  */
-export type ToolHandler = (args: any) => Promise<any>;
+export type ToolHandler = (args: unknown) => Promise<unknown>;
 
 /**
  * Tool registration info
