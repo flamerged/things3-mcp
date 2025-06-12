@@ -283,41 +283,6 @@ export class RequestLogger {
   }
 }
 
-/**
- * Performance logger for tracking operation timings
- */
-export class PerformanceLogger {
-  private logger: Logger;
-  
-  constructor(context: string = 'Performance') {
-    this.logger = createLogger(context);
-  }
-  
-  /**
-   * Log operation timing
-   */
-  logTiming(operation: string, duration: number, metadata?: Record<string, unknown>): void {
-    const level = duration > 5000 ? 'warn' : 'debug';
-    
-    this.logger[level](`Operation completed: ${operation}`, {
-      duration: `${duration}ms`,
-      ...metadata
-    });
-  }
-  
-  /**
-   * Log batch operation
-   */
-  logBatch(operation: string, count: number, duration: number): void {
-    this.logger.info(`Batch operation completed: ${operation}`, {
-      count,
-      duration: `${duration}ms`,
-      avgDuration: `${(duration / count).toFixed(2)}ms`
-    });
-  }
-}
-
 // Export singleton instances
 export const logger = Logger.getInstance();
 export const requestLogger = new RequestLogger();
-export const performanceLogger = new PerformanceLogger();
