@@ -53,15 +53,6 @@ export interface Config {
   // Retry settings
   retry: RetryConfig;
   
-  // Performance settings
-  performance: {
-    enablePool: boolean;
-    enableBatching: boolean;
-    batchSize: number;
-    batchDelay: number;
-    enableTiming: boolean;
-  };
-  
   // Feature flags
   features: {
     errorCorrection: boolean;
@@ -144,14 +135,6 @@ export function loadConfig(): Config {
       backoffMultiplier: parseFloat(env['RETRY_BACKOFF_MULTIPLIER'] || '2'),
       initialDelay: parseInt(env['RETRY_INITIAL_DELAY'], 1000), // 1 second
       maxDelay: parseInt(env['RETRY_MAX_DELAY'], 30000) // 30 seconds
-    },
-    
-    performance: {
-      enablePool: parseBoolean(env['PERF_ENABLE_POOL'], true),
-      enableBatching: parseBoolean(env['PERF_ENABLE_BATCHING'], true),
-      batchSize: parseInt(env['PERF_BATCH_SIZE'], 10),
-      batchDelay: parseInt(env['PERF_BATCH_DELAY'], 100), // 100ms
-      enableTiming: parseBoolean(env['PERF_ENABLE_TIMING'], true)
     },
     
     features: {
