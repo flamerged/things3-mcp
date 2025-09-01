@@ -95,7 +95,27 @@ export class Things3Server {
 
       // All tools are now handled by the registry!
       const result = await this.registry.executeTool(name, args);
-      return { toolResult: result };
+      
+      // Format result for MCP protocol
+      let content: string;
+      if (typeof result === 'string') {
+        content = result;
+      } else if (typeof result === 'object' && result !== null) {
+        content = JSON.stringify(result, null, 2);
+      } else {
+        content = String(result);
+      }
+      
+      return { 
+        toolResult: {
+          content: [
+            {
+              type: 'text',
+              text: content
+            }
+          ]
+        }
+      };
     });
 
     this.logger.info(`Registered ${this.registry.getToolCount()} tools via registry`);
